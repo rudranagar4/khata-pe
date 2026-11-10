@@ -411,17 +411,22 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Room (कमरा) *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                  const Expanded(
+                    child: Text(
+                      'Room (कमरा) *',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                    ),
+                  ),
                   if (selectedProp != null)
                     TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF4ADE80),
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () => _showQuickAddRoomDialog(context, selectedProp),
-                      icon: const Icon(Icons.add_circle_outline, size: 16),
-                      label: const Text('+ Add New Room', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      icon: const Icon(Icons.add_circle_outline, size: 15),
+                      label: const Text('+ Add Room', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                 ],
               ),
@@ -436,23 +441,25 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 22),
-                      const SizedBox(width: 10),
+                      const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                      const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'No rooms in this building yet.',
-                          style: TextStyle(color: Colors.white, fontSize: 13),
+                          style: TextStyle(color: Colors.white, fontSize: 12),
                         ),
                       ),
+                      const SizedBox(width: 6),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF16A34A),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          visualDensity: VisualDensity.compact,
                         ),
                         onPressed: () => _showQuickAddRoomDialog(context, selectedProp),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Add Room Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.add, size: 14),
+                        label: const Text('Add Room', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -535,7 +542,12 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Room Monthly Rent (₹) *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                        const Text(
+                          'Rent (₹) *',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _rentController,
@@ -547,12 +559,17 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Security Deposit', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                        const Text(
+                          'Deposit',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _depositController,
@@ -563,13 +580,18 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   SizedBox(
-                    width: 80,
+                    width: 75,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Due Day', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                        const Text(
+                          'Due Day',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _dueDayController,
@@ -668,14 +690,25 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ID Proof Type', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                        const Text(
+                          'ID Proof Type',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                        ),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
-                          initialValue: _selectedIdType,
+                          value: _selectedIdType,
+                          isExpanded: true,
                           dropdownColor: AppColors.cardDark,
                           style: const TextStyle(color: Colors.white, fontSize: 13),
                           decoration: const InputDecoration(),
-                          items: _idProofTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          items: _idProofTypes
+                              .map((t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t, overflow: TextOverflow.ellipsis),
+                                  ))
+                              .toList(),
                           onChanged: (val) {
                             if (val != null) setState(() => _selectedIdType = val);
                           },
@@ -689,7 +722,12 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ID Proof Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                        const Text(
+                          'ID Proof Number',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                        ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _idNumberController,

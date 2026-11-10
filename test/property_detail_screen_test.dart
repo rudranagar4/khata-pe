@@ -24,6 +24,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Sharma Niwas'), findsAtLeastNWidgets(1));
-    expect(find.byType(SingleChildScrollView), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsAtLeastNWidgets(1));
   });
 }

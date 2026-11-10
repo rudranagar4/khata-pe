@@ -169,7 +169,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                               ),
                               child: const Icon(Icons.apartment_rounded, color: Color(0xFF4ADE80), size: 22),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,19 +197,19 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.statusPaidBg,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '${property.occupiedRooms}/${property.totalRooms} Rooms Occupied',
+                          '${property.occupiedRooms}/${property.totalRooms} Occupied',
                           style: const TextStyle(
                             color: Color(0xFF4ADE80),
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -251,31 +251,36 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
             // 2. Financial Snapshot for this Building
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFF1B2433),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppColors.borderDark),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatColumn(
-                    'Collected (This Month)',
-                    CurrencyFormatter.format(totalCollected),
-                    const Color(0xFF4ADE80),
+                  Expanded(
+                    child: _buildStatColumn(
+                      'Collected',
+                      CurrencyFormatter.format(totalCollected),
+                      const Color(0xFF4ADE80),
+                    ),
                   ),
-                  Container(width: 1, height: 36, color: AppColors.borderDark),
-                  _buildStatColumn(
-                    'Pending Rent',
-                    CurrencyFormatter.format(totalPending),
-                    totalPending > 0 ? const Color(0xFFF59E0B) : Colors.white,
+                  Container(width: 1, height: 32, color: AppColors.borderDark),
+                  Expanded(
+                    child: _buildStatColumn(
+                      'Pending',
+                      CurrencyFormatter.format(totalPending),
+                      totalPending > 0 ? const Color(0xFFF59E0B) : Colors.white,
+                    ),
                   ),
-                  Container(width: 1, height: 36, color: AppColors.borderDark),
-                  _buildStatColumn(
-                    'Total Potential',
-                    CurrencyFormatter.format(property.fullPotentialRent),
-                    Colors.white,
+                  Container(width: 1, height: 32, color: AppColors.borderDark),
+                  Expanded(
+                    child: _buildStatColumn(
+                      'Potential',
+                      CurrencyFormatter.format(property.fullPotentialRent),
+                      Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -289,7 +294,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Building Rooms (${property.units.length} कमरे)',
+                    'Rooms (${property.units.length} कमरे)',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -345,14 +350,17 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
             const SizedBox(height: 10),
 
-            Row(
-              children: [
-                _buildFilterChip('All (${property.totalRooms})', null),
-                const SizedBox(width: 8),
-                _buildFilterChip('Occupied (${property.occupiedRooms})', UnitStatus.occupied),
-                const SizedBox(width: 8),
-                _buildFilterChip('Vacant (${property.vacantRooms})', UnitStatus.vacant),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('All (${property.totalRooms})', null),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Occupied (${property.occupiedRooms})', UnitStatus.occupied),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Vacant (${property.vacantRooms})', UnitStatus.vacant),
+                ],
+              ),
             ),
 
             const SizedBox(height: 14),
@@ -745,19 +753,27 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rent: ${CurrencyFormatter.format(room.monthlyRent)}/month',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    Text(
-                      'Deposit: ${CurrencyFormatter.format(room.securityDeposit)}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rent: ${CurrencyFormatter.format(room.monthlyRent)}/mo',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Deposit: ${CurrencyFormatter.format(room.securityDeposit)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -774,10 +790,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     backgroundColor: const Color(0xFF1B2433),
                     foregroundColor: const Color(0xFF4ADE80),
                     side: const BorderSide(color: Color(0xFF22C55E)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    visualDensity: VisualDensity.compact,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
-                  label: const Text('Add Tenant to Room', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 15),
+                  label: const Text('Add Tenant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
               ],
             ),
@@ -789,18 +807,25 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
   Widget _buildStatColumn(String label, String value, Color color) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
