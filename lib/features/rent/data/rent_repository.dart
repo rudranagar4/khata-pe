@@ -22,7 +22,19 @@ class RentRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        return list.map((e) => RentEntry.fromJson(e as Map<String, dynamic>)).toList();
+        final entries = list.map((e) => RentEntry.fromJson(e as Map<String, dynamic>)).toList();
+        bool migrated = false;
+        final updated = entries.map((e) {
+          if (e.propertyId == 'prop_green_residency') {
+            migrated = true;
+            return e.copyWith(propertyId: 'prop_sai_commercial');
+          }
+          return e;
+        }).toList();
+        if (migrated) {
+          saveRentEntries(updated);
+        }
+        return updated;
       } catch (_) {}
     }
     return _getSeedRentEntries();
@@ -116,7 +128,7 @@ class RentRepository {
       RentEntry(
         id: 'entry_amit_current',
         tenantId: 'tenant_amit_shop',
-        propertyId: 'prop_green_residency',
+        propertyId: 'prop_sai_commercial',
         unitId: 'unit_shop_1',
         month: currentMonthKey,
         expectedAmount: 22000,

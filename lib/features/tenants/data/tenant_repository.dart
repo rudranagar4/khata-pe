@@ -18,7 +18,13 @@ class TenantRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        return list.map((e) => Tenant.fromJson(e as Map<String, dynamic>)).toList();
+        return list.map((e) {
+          final t = Tenant.fromJson(e as Map<String, dynamic>);
+          if (t.propertyId == 'prop_green_residency') {
+            return t.copyWith(propertyId: 'prop_sai_commercial');
+          }
+          return t;
+        }).toList();
       } catch (_) {}
     }
     return _getSeedTenants();
@@ -89,7 +95,7 @@ class TenantRepository {
         phone: '9988776655',
         idProofType: 'GSTIN / Trade License',
         idProofNumber: '07AAACP1234P1Z5',
-        propertyId: 'prop_green_residency',
+        propertyId: 'prop_sai_commercial',
         unitId: 'unit_shop_1',
         moveInDate: DateTime(2025, 8, 1),
         agreementEndDate: DateTime(2027, 7, 31),
@@ -115,14 +121,46 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
   TenantsNotifier(this._repo, this._ref) : super(_repo.getTenants());
 
   Future<void> addTenant(Tenant tenant) async {
-    final updated = [...state, tenant];
+    // If the room already had another active occupant, mark the prior occupant moved out
+    var currentTenants = state;
+    final hasPriorOccupant = state.any((t) =>
+        t.propertyId == tenant.propertyId &&
+        t.unitId == tenant.unitId &&
+        t.isActive &&
+        t.id != tenant.id);
+
+    if (hasPriorOccupant) {
+      currentTenants = state.map((t) {
+        if (t.propertyId == tenant.propertyId &&
+            t.unitId == tenant.unitId &&
+            t.isActive &&
+            t.id != tenant.id) {
+          return t.copyWith(isActive: false, moveOutDate: DateTime.now());
+        }
+        return t;
+      }).toList();
+    }
+
+    final updated = [...currentTenants, tenant];
     state = updated;
     await _repo.saveTenants(updated);
 
-    // 1. Automatically mark the unit as occupied
+    // 1. Automatically mark the unit as occupied and sync rent if changed
     await _ref
         .read(propertiesProvider.notifier)
         .setUnitOccupancy(tenant.propertyId, tenant.unitId, true);
+
+    final prop = _ref.read(propertiesProvider).where((p) => p.id == tenant.propertyId).firstOrNull;
+    final unit = prop?.units.where((u) => u.id == tenant.unitId).firstOrNull;
+    if (unit != null && unit.monthlyRent != tenant.monthlyRent) {
+      await _ref.read(propertiesProvider.notifier).updateUnit(
+        tenant.propertyId,
+        unit.copyWith(
+          monthlyRent: tenant.monthlyRent,
+          securityDeposit: tenant.securityDeposit,
+        ),
+      );
+    }
 
     // 2. Automatically generate rent entries for the current month so they appear immediately in dashboard & property detail
     try {

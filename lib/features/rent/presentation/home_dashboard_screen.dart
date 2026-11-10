@@ -29,6 +29,7 @@ class HomeDashboardScreen extends ConsumerStatefulWidget {
 
 class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
   RentStatus? _selectedStatusFilter;
+  String? _selectedPropertyIdFilter;
 
   @override
   void initState() {
@@ -99,9 +100,13 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final expenses = ref.read(expensesProvider);
 
     try {
+      final exportProperties = _selectedPropertyIdFilter != null
+          ? properties.where((p) => p.id == _selectedPropertyIdFilter).toList()
+          : properties;
+
       final result = await ExcelExportService.generateMonthlyReport(
         monthKey: monthKey,
-        properties: properties,
+        properties: exportProperties,
         tenants: tenants,
         rentEntries: rentEntries,
         expenses: expenses,
@@ -131,18 +136,23 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final activeTenantIds = tenants.map((t) => t.id).toSet();
     final entries = rawEntries.where((e) => activeTenantIds.contains(e.tenantId)).toList();
 
-    final summary = RentCalculator.calculateSummary(entries);
-    final overdueEntries = entries.where((e) => e.status == RentStatus.overdue).toList();
+    // Filter by selected building if specified
+    final propertyFilteredEntries = _selectedPropertyIdFilter == null
+        ? entries
+        : entries.where((e) => e.propertyId == _selectedPropertyIdFilter).toList();
 
-    final allPayments = entries.expand((e) => e.payments).toList()
+    final summary = RentCalculator.calculateSummary(propertyFilteredEntries);
+    final overdueEntries = propertyFilteredEntries.where((e) => e.status == RentStatus.overdue).toList();
+
+    final allPayments = propertyFilteredEntries.expand((e) => e.payments).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     final cashPayments = allPayments.where((p) => p.mode == PaymentMode.cash).toList();
     final bankPayments = allPayments.where((p) => p.mode == PaymentMode.bank).toList();
 
-    // Apply Filter
+    // Apply Status Filter
     final filteredEntries = _selectedStatusFilter == null
-        ? entries
-        : entries.where((e) {
+        ? propertyFilteredEntries
+        : propertyFilteredEntries.where((e) {
             if (_selectedStatusFilter == RentStatus.overdue) {
               return e.status == RentStatus.overdue;
             } else if (_selectedStatusFilter == RentStatus.partiallyPaid) {
@@ -271,7 +281,36 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 ),
               ),
 
-              const SizedBox(height: 14),
+              // Building Filter Chips Bar
+              if (properties.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildBuildingFilterChip(
+                        label: 'All Buildings (${properties.length})',
+                        isSelected: _selectedPropertyIdFilter == null,
+                        onTap: () => setState(() => _selectedPropertyIdFilter = null),
+                      ),
+                      ...properties.map((p) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _buildBuildingFilterChip(
+                            label: p.name,
+                            isSelected: _selectedPropertyIdFilter == p.id,
+                            onTap: () => setState(() => _selectedPropertyIdFilter = p.id),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ] else ...[
+                const SizedBox(height: 14),
+              ],
 
               // 2. Hero Collection Progress Card (Exact Gradient & Layout from Image 1)
               Container(
@@ -1322,6 +1361,35 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildBuildingFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(19),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF16A34A) : AppColors.cardDark,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF22C55E) : AppColors.borderDark,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 12.5,
+          ),
+        ),
+      ),
     );
   }
 }

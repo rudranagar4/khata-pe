@@ -8,7 +8,6 @@ import 'package:khatape/features/properties/domain/models/unit.dart';
 import 'package:khatape/features/tenants/data/tenant_repository.dart';
 import 'package:khatape/features/tenants/domain/models/tenant.dart';
 import 'package:khatape/features/rent/data/rent_repository.dart';
-import 'package:khatape/features/expenses/data/expense_repository.dart';
 import 'package:khatape/core/utils/date_formatter.dart';
 
 void main() {
@@ -202,5 +201,106 @@ void main() {
 
     // Associated rent entries are cascade-deleted
     expect(container.read(rentLedgerProvider).any((e) => e.propertyId == prop.id), isFalse);
+  });
+
+  test('Adding a tenant to buildings other than NEW 14 succeeds and generates rent ledger entry', () async {
+    final properties = container.read(propertiesProvider);
+    final sharmaProp = properties.firstWhere((p) => p.id == 'prop_sharma_complex');
+    final vacantUnit = sharmaProp.units.firstWhere((u) => u.status == UnitStatus.vacant);
+
+    final tenantsNotifier = container.read(tenantsProvider.notifier);
+    final now = DateTime.now();
+
+    final newTenant = Tenant(
+      id: 'tenant_non_new14_user',
+      name: 'Rohan Sharma',
+      phone: '9811223344',
+      propertyId: sharmaProp.id,
+      unitId: vacantUnit.id,
+      moveInDate: DateTime(now.year, now.month, 1),
+      monthlyRent: vacantUnit.monthlyRent,
+      rentDueDay: 5,
+      securityDeposit: vacantUnit.securityDeposit,
+      isActive: true,
+    );
+
+    await tenantsNotifier.addTenant(newTenant);
+
+    // Verify tenant is added
+    final allTenants = container.read(tenantsProvider);
+    expect(allTenants.any((t) => t.id == 'tenant_non_new14_user'), isTrue);
+
+    // Verify unit status is updated to occupied in Sharma Niwas
+    final updatedSharmaProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sharma_complex');
+    final updatedUnit = updatedSharmaProp.units.firstWhere((u) => u.id == vacantUnit.id);
+    expect(updatedUnit.status, UnitStatus.occupied);
+
+    // Verify rent ledger entry exists for this tenant
+    final currentMonthKey = DateFormatter.toMonthKey(now);
+    final rentEntries = container.read(rentLedgerProvider);
+    final tenantEntry = rentEntries.firstWhere((e) => e.tenantId == 'tenant_non_new14_user' && e.month == currentMonthKey);
+    expect(tenantEntry.expectedAmount, vacantUnit.monthlyRent);
+    expect(tenantEntry.propertyId, 'prop_sharma_complex');
+  });
+
+  test('Sai Commercial building and Amit Patel tenant are correctly linked', () async {
+    final properties = container.read(propertiesProvider);
+    final saiProp = properties.firstWhere((p) => p.id == 'prop_sai_commercial');
+    expect(saiProp.name, contains('Sai Commercial'));
+
+    final tenants = container.read(tenantsProvider);
+    final amitTenant = tenants.firstWhere((t) => t.id == 'tenant_amit_shop');
+    expect(amitTenant.propertyId, 'prop_sai_commercial');
+
+    final rentEntries = container.read(rentLedgerProvider);
+    final amitEntries = rentEntries.where((e) => e.tenantId == 'tenant_amit_shop').toList();
+    expect(amitEntries, isNotEmpty);
+    for (final e in amitEntries) {
+      expect(e.propertyId, 'prop_sai_commercial');
+    }
+  });
+
+  test('Adding a quick room to a building and assigning a tenant succeeds', () async {
+    final propertiesNotifier = container.read(propertiesProvider.notifier);
+    final tenantsNotifier = container.read(tenantsProvider.notifier);
+
+    // Add room to Sai Commercial
+    final newRoom = const PropertyUnit(
+      id: 'unit_sai_301',
+      propertyId: 'prop_sai_commercial',
+      unitName: 'Room 301',
+      floor: '3rd Floor',
+      monthlyRent: 12000,
+      securityDeposit: 24000,
+      status: UnitStatus.vacant,
+    );
+    await propertiesNotifier.addUnit('prop_sai_commercial', newRoom);
+
+    final saiProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sai_commercial');
+    expect(saiProp.units.any((u) => u.id == 'unit_sai_301'), isTrue);
+
+    // Add tenant to this new room
+    final now = DateTime.now();
+    final newTenant = Tenant(
+      id: 'tenant_sai_301',
+      name: 'Vikas Gupta',
+      phone: '9988776655',
+      propertyId: 'prop_sai_commercial',
+      unitId: 'unit_sai_301',
+      moveInDate: DateTime(now.year, now.month, 1),
+      monthlyRent: 12000,
+      rentDueDay: 5,
+      securityDeposit: 24000,
+      isActive: true,
+    );
+    await tenantsNotifier.addTenant(newTenant);
+
+    final updatedSaiProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sai_commercial');
+    final room = updatedSaiProp.units.firstWhere((u) => u.id == 'unit_sai_301');
+    expect(room.status, UnitStatus.occupied);
+
+    final currentMonthKey = DateFormatter.toMonthKey(now);
+    final entries = container.read(rentLedgerProvider);
+    expect(entries.any((e) => e.tenantId == 'tenant_sai_301' && e.month == currentMonthKey && e.propertyId == 'prop_sai_commercial'), isTrue);
   });
 }

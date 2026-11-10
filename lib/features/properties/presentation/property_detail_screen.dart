@@ -63,6 +63,20 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         title: Text(property.name),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFF4ADE80)),
+            tooltip: 'Add Tenant to this Building',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddEditTenantScreen(
+                    initialPropertyId: property.id,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_outlined, color: Colors.white),
             tooltip: 'Edit Building',
             onPressed: () {
@@ -272,18 +286,43 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     color: Colors.white,
                   ),
                 ),
-                TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddEditUnitScreen(propertyId: property.id),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF4ADE80),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Room'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddEditTenantScreen(
+                              initialPropertyId: property.id,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                      label: const Text('Add Tenant'),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddEditUnitScreen(propertyId: property.id),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add Room'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -469,7 +508,17 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
                     color: AppColors.cardDarkElevated,
                     onSelected: (val) async {
-                      if (val == 'edit') {
+                      if (val == 'tenant_action') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddEditTenantScreen(
+                              initialPropertyId: property.id,
+                              initialUnitId: room.id,
+                            ),
+                          ),
+                        );
+                      } else if (val == 'edit') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -504,6 +553,13 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                       }
                     },
                     itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'tenant_action',
+                        child: Text(
+                          isOccupied ? 'Change / Reassign Tenant' : 'Add Tenant to Room',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
                       const PopupMenuItem(
                         value: 'edit',
                         child: Text('Edit Room Details', style: TextStyle(color: Colors.white)),

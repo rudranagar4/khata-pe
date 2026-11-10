@@ -101,7 +101,11 @@ class _AddEditPropertyScreenState extends ConsumerState<AddEditPropertyScreen> {
       }
 
       if (mounted) {
-        context.pop();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          context.pop();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF16A34A),

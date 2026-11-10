@@ -16,7 +16,19 @@ class ExpenseRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        return list.map((e) => Expense.fromJson(e as Map<String, dynamic>)).toList();
+        final expenses = list.map((e) => Expense.fromJson(e as Map<String, dynamic>)).toList();
+        bool migrated = false;
+        final updated = expenses.map((e) {
+          if (e.propertyId == 'prop_green_residency') {
+            migrated = true;
+            return e.copyWith(propertyId: 'prop_sai_commercial');
+          }
+          return e;
+        }).toList();
+        if (migrated) {
+          saveExpenses(updated);
+        }
+        return updated;
       } catch (_) {}
     }
     return _getSeedExpenses();
@@ -48,7 +60,7 @@ class ExpenseRepository {
       ),
       Expense(
         id: 'exp_3',
-        propertyId: 'prop_green_residency',
+        propertyId: 'prop_sai_commercial',
         category: ExpenseCategory.propertyTax,
         amount: 4500,
         date: DateTime(now.year, now.month - 1, 15),

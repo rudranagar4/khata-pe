@@ -8,6 +8,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../data/tenant_repository.dart';
 import '../domain/models/tenant.dart';
 import '../../properties/data/property_repository.dart';
+import '../../properties/domain/models/property.dart';
 import '../../properties/domain/models/unit.dart';
 import '../../rent/data/rent_repository.dart';
 
@@ -80,13 +81,22 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
     } else {
       _selectedPropertyId = widget.initialPropertyId;
       _selectedUnitId = widget.initialUnitId;
-      if (widget.initialPropertyId != null && widget.initialUnitId != null) {
+      if (widget.initialPropertyId != null) {
         final props = ref.read(propertiesProvider);
         final prop = props.where((p) => p.id == widget.initialPropertyId).firstOrNull;
-        final unit = prop?.units.where((u) => u.id == widget.initialUnitId).firstOrNull;
-        if (unit != null) {
-          _rentController.text = unit.monthlyRent.toString();
-          _depositController.text = unit.securityDeposit.toString();
+        if (prop != null && prop.units.isNotEmpty) {
+          if (widget.initialUnitId != null) {
+            final unit = prop.units.where((u) => u.id == widget.initialUnitId).firstOrNull;
+            if (unit != null) {
+              _rentController.text = unit.monthlyRent.toString();
+              _depositController.text = unit.securityDeposit.toString();
+            }
+          } else {
+            final targetUnit = prop.units.where((u) => u.status == UnitStatus.vacant).firstOrNull ?? prop.units.first;
+            _selectedUnitId = targetUnit.id;
+            _rentController.text = targetUnit.monthlyRent.toString();
+            _depositController.text = targetUnit.securityDeposit.toString();
+          }
         }
       }
     }
@@ -167,7 +177,11 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
       }
 
       if (mounted) {
-        context.pop();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          context.pop();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF16A34A),
@@ -189,20 +203,95 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
     }
   }
 
+  Future<void> _showQuickAddRoomDialog(BuildContext context, Property property) async {
+    final nameCtrl = TextEditingController(text: 'Room ${property.units.length + 1}');
+    final floorCtrl = TextEditingController(text: '1st Floor');
+    final rentCtrl = TextEditingController(text: '5000');
+    final depositCtrl = TextEditingController(text: '10000');
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        title: Text('Add Room to ${property.name}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Room Name / Number', hintText: 'e.g. Room 105'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: floorCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Floor', hintText: 'e.g. 1st Floor'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: rentCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Monthly Rent (₹)', prefixText: '₹ '),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: depositCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(labelText: 'Security Deposit (₹)', prefixText: '₹ '),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF16A34A)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Create Room'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && nameCtrl.text.trim().isNotEmpty) {
+      final rent = CurrencyFormatter.parse(rentCtrl.text);
+      final deposit = CurrencyFormatter.parse(depositCtrl.text);
+      const uuid = Uuid();
+      final newUnit = PropertyUnit(
+        id: uuid.v4(),
+        propertyId: property.id,
+        unitName: nameCtrl.text.trim(),
+        floor: floorCtrl.text.trim().isNotEmpty ? floorCtrl.text.trim() : null,
+        monthlyRent: rent > 0 ? rent : 5000,
+        securityDeposit: deposit,
+        status: UnitStatus.vacant,
+      );
+
+      await ref.read(propertiesProvider.notifier).addUnit(property.id, newUnit);
+
+      setState(() {
+        _selectedUnitId = newUnit.id;
+        _rentController.text = newUnit.monthlyRent.toString();
+        _depositController.text = newUnit.securityDeposit.toString();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final properties = ref.watch(propertiesProvider);
+    final allTenants = ref.watch(tenantsProvider);
     final isEditing = widget.tenantToEdit != null;
 
     final selectedProp = properties.where((p) => p.id == _selectedPropertyId).firstOrNull;
-
-    final availableUnits = selectedProp?.units.where((u) {
-      if (u.status == UnitStatus.vacant) return true;
-      if (widget.tenantToEdit != null && widget.tenantToEdit!.unitId == u.id) return true;
-      if (widget.initialUnitId != null && widget.initialUnitId == u.id) return true;
-      if (_selectedUnitId != null && _selectedUnitId == u.id) return true;
-      return false;
-    }).toList() ?? [];
+    final availableUnits = selectedProp?.units ?? [];
 
     final validPropertyId = properties.any((p) => p.id == _selectedPropertyId) ? _selectedPropertyId : null;
     final validUnitId = availableUnits.any((u) => u.id == _selectedUnitId) ? _selectedUnitId : null;
@@ -301,7 +390,16 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                 onChanged: (val) {
                   setState(() {
                     _selectedPropertyId = val;
-                    _selectedUnitId = null;
+                    final prop = properties.where((p) => p.id == val).firstOrNull;
+                    if (prop != null && prop.units.isNotEmpty) {
+                      final vacant = prop.units.where((u) => u.status == UnitStatus.vacant).firstOrNull;
+                      final target = vacant ?? prop.units.first;
+                      _selectedUnitId = target.id;
+                      _rentController.text = target.monthlyRent.toString();
+                      _depositController.text = target.securityDeposit.toString();
+                    } else {
+                      _selectedUnitId = null;
+                    }
                   });
                 },
                 validator: (val) => val == null ? 'Please select a building' : null,
@@ -309,35 +407,122 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
 
               const SizedBox(height: 18),
 
-              const Text('Room (कमरा) *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                value: validUnitId,
-                dropdownColor: AppColors.cardDark,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                hint: Text(
-                  _selectedPropertyId == null ? 'First select building' : 'Select Room in this Building',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                decoration: const InputDecoration(),
-                items: availableUnits.map((u) {
-                  return DropdownMenuItem(
-                    value: u.id,
-                    child: Text('${u.roomDisplayName} • ${u.floor ?? "1st Floor"} (₹${u.monthlyRent}/mo)'),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedUnitId = val;
-                    final unit = availableUnits.where((u) => u.id == val).firstOrNull;
-                    if (unit != null) {
-                      _rentController.text = unit.monthlyRent.toString();
-                      _depositController.text = unit.securityDeposit.toString();
-                    }
-                  });
-                },
-                validator: (val) => val == null ? 'Please select a room' : null,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Room (कमरा) *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white)),
+                  if (selectedProp != null)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF4ADE80),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => _showQuickAddRoomDialog(context, selectedProp),
+                      icon: const Icon(Icons.add_circle_outline, size: 16),
+                      label: const Text('+ Add New Room', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                ],
               ),
+              const SizedBox(height: 6),
+              if (selectedProp != null && availableUnits.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E2838),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 22),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'No rooms in this building yet.',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        ),
+                        onPressed: () => _showQuickAddRoomDialog(context, selectedProp),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Room Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: validUnitId,
+                  dropdownColor: AppColors.cardDark,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  hint: Text(
+                    _selectedPropertyId == null ? 'First select building' : 'Select Room in this Building',
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  decoration: const InputDecoration(),
+                  items: availableUnits.map((u) {
+                    final occupant = allTenants.where((t) => t.isActive && t.unitId == u.id && t.propertyId == selectedProp?.id && t.id != widget.tenantToEdit?.id).firstOrNull;
+                    final statusText = occupant != null
+                        ? 'Occupied (${occupant.name})'
+                        : (u.status == UnitStatus.vacant ? 'Vacant' : 'Occupied');
+                    return DropdownMenuItem(
+                      value: u.id,
+                      child: Text(
+                        '${u.roomDisplayName} • ${u.floor ?? "1st Floor"} (₹${u.monthlyRent}/mo • $statusText)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedUnitId = val;
+                      final unit = availableUnits.where((u) => u.id == val).firstOrNull;
+                      if (unit != null) {
+                        _rentController.text = unit.monthlyRent.toString();
+                        _depositController.text = unit.securityDeposit.toString();
+                      }
+                    });
+                  },
+                  validator: (val) => val == null ? 'Please select a room' : null,
+                ),
+
+              if (validUnitId != null) ...[
+                Builder(
+                  builder: (context) {
+                    final occupant = allTenants.where((t) => t.isActive && t.unitId == validUnitId && t.propertyId == selectedProp?.id && t.id != widget.tenantToEdit?.id).firstOrNull;
+                    if (occupant != null) {
+                      return Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E2838),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.swap_horiz, color: Colors.orange, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Note: This room is currently occupied by ${occupant.name}. Assigning will mark ${occupant.name} as moved out.',
+                                style: const TextStyle(color: Colors.orange, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
 
               const SizedBox(height: 18),
 
