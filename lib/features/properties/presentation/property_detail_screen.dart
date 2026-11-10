@@ -158,37 +158,46 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF16A34A).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16A34A).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.apartment_rounded, color: Color(0xFF4ADE80), size: 22),
                             ),
-                            child: const Icon(Icons.apartment_rounded, color: Color(0xFF4ADE80), size: 22),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                property.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    property.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    property.type.displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 12),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                property.type.displayName,
-                                style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
@@ -278,20 +287,26 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Building Rooms (${property.units.length} कमरे)',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                Expanded(
+                  child: Text(
+                    'Building Rooms (${property.units.length} कमरे)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF4ADE80),
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () {
                         Navigator.push(
@@ -303,13 +318,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
-                      label: const Text('Add Tenant'),
+                      icon: const Icon(Icons.person_add_alt_1_outlined, size: 15),
+                      label: const Text('Tenant', style: TextStyle(fontSize: 12)),
                     ),
                     TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
                       ),
                       onPressed: () {
                         Navigator.push(
@@ -319,8 +335,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add Room'),
+                      icon: const Icon(Icons.add, size: 15),
+                      label: const Text('Room', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
@@ -450,44 +466,54 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isOccupied ? AppColors.statusPaidBg : const Color(0xFF1E2838),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.meeting_room_rounded,
-                      color: isOccupied ? const Color(0xFF4ADE80) : Colors.grey,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        room.roomDisplayName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isOccupied ? AppColors.statusPaidBg : const Color(0xFF1E2838),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${room.floor ?? "1st Floor"} • ${room.roomType ?? "Room"}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      child: Icon(
+                        Icons.meeting_room_rounded,
+                        color: isOccupied ? const Color(0xFF4ADE80) : Colors.grey,
+                        size: 22,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            room.roomDisplayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${room.floor ?? "1st Floor"} • ${room.roomType ?? "Room"}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
 
               // Occupancy Status Badge & Menu
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -626,20 +652,27 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rent: ${CurrencyFormatter.format(room.monthlyRent)}/mo',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    if (room.meterNumber != null && room.meterNumber!.isNotEmpty)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        '⚡ Sub-meter: ${room.meterNumber}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        'Rent: ${CurrencyFormatter.format(room.monthlyRent)}/mo',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                  ],
+                      if (room.meterNumber != null && room.meterNumber!.isNotEmpty)
+                        Text(
+                          '⚡ Sub-meter: ${room.meterNumber}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
 
                 // Rent Status Badge
                 if (rentEntry != null)

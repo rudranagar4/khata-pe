@@ -31,7 +31,9 @@ class ExpenseRepository {
         return updated;
       } catch (_) {}
     }
-    return _getSeedExpenses();
+    final seed = _getSeedExpenses();
+    saveExpenses(seed);
+    return seed;
   }
 
   Future<void> saveExpenses(List<Expense> expenses) async {

@@ -18,16 +18,32 @@ class TenantRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        return list.map((e) {
+        final loaded = list.map((e) {
           final t = Tenant.fromJson(e as Map<String, dynamic>);
           if (t.propertyId == 'prop_green_residency') {
             return t.copyWith(propertyId: 'prop_sai_commercial');
           }
           return t;
         }).toList();
+
+        final seedTenants = _getSeedTenants();
+        bool updated = false;
+        final result = List<Tenant>.from(loaded);
+        for (final seed in seedTenants) {
+          if (!result.any((t) => t.id == seed.id)) {
+            result.add(seed);
+            updated = true;
+          }
+        }
+        if (updated) {
+          saveTenants(result);
+        }
+        return result;
       } catch (_) {}
     }
-    return _getSeedTenants();
+    final seed = _getSeedTenants();
+    saveTenants(seed);
+    return seed;
   }
 
   Future<void> saveTenants(List<Tenant> tenants) async {

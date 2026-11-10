@@ -37,7 +37,9 @@ class RentRepository {
         return updated;
       } catch (_) {}
     }
-    return _getSeedRentEntries();
+    final seed = _getSeedRentEntries();
+    saveRentEntries(seed);
+    return seed;
   }
 
   Future<void> saveRentEntries(List<RentEntry> entries) async {

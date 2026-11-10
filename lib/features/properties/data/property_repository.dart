@@ -20,10 +20,30 @@ class PropertyRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        return list.map((e) => Property.fromJson(e as Map<String, dynamic>)).toList();
+        final loaded = list.map((e) => Property.fromJson(e as Map<String, dynamic>)).toList();
+        final seedProps = _getSeedProperties();
+        bool updated = false;
+        final result = List<Property>.from(loaded);
+        for (final seed in seedProps) {
+          final existingIndex = result.indexWhere((p) => p.id == seed.id);
+          if (existingIndex == -1) {
+            result.add(seed);
+            updated = true;
+          } else if (result[existingIndex].units.isEmpty && seed.units.isNotEmpty) {
+            // Restore rooms if existing property had 0 rooms
+            result[existingIndex] = result[existingIndex].copyWith(units: seed.units);
+            updated = true;
+          }
+        }
+        if (updated) {
+          saveProperties(result);
+        }
+        return result;
       } catch (_) {}
     }
-    return _getSeedProperties();
+    final seed = _getSeedProperties();
+    saveProperties(seed);
+    return seed;
   }
 
   Future<void> saveProperties(List<Property> properties) async {

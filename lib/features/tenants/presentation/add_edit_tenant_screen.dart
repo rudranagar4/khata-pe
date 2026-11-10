@@ -377,6 +377,7 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 value: validPropertyId,
+                isExpanded: true,
                 dropdownColor: AppColors.cardDark,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 hint: const Text('Select Building', style: TextStyle(color: AppColors.textSecondary)),
@@ -459,6 +460,7 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
               else
                 DropdownButtonFormField<String>(
                   value: validUnitId,
+                  isExpanded: true,
                   dropdownColor: AppColors.cardDark,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   hint: Text(
