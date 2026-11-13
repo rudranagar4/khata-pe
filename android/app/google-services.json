@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "657069485194",
+    "project_id": "khata-pe",
+    "storage_bucket": "khata-pe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:657069485194:android:d9571f5b08c908f56e9c40",
+        "android_client_info": {
+          "package_name": "com.khatape.khatape"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSy_KhataPe_657069485194_AndroidKey"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+

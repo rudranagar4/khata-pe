@@ -18,13 +18,29 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
+
+    await container.read(propertiesProvider.notifier).addProperty(
+      name: 'Sharma Niwas',
+      type: PropertyType.building,
+      address: 'Lane 1',
+      city: 'Delhi',
+      initialRoomCount: 2,
+      defaultRoomRent: 5000,
+      defaultRoomDeposit: 10000,
+    );
+
+    final prop = container.read(propertiesProvider).first;
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-        ],
-        child: const MaterialApp(
-          home: PropertyDetailScreen(propertyId: 'prop_sharma_complex'),
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: PropertyDetailScreen(propertyId: prop.id),
         ),
       ),
     );
@@ -55,13 +71,29 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
+
+    await container.read(propertiesProvider.notifier).addProperty(
+      name: 'Sharma Niwas',
+      type: PropertyType.building,
+      address: 'Lane 1',
+      city: 'Delhi',
+      initialRoomCount: 2,
+      defaultRoomRent: 5000,
+      defaultRoomDeposit: 10000,
+    );
+
+    final prop = container.read(propertiesProvider).first;
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-        ],
-        child: const MaterialApp(
-          home: AddEditTenantScreen(initialPropertyId: 'prop_sharma_complex'),
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: AddEditTenantScreen(initialPropertyId: prop.id),
         ),
       ),
     );
@@ -96,12 +128,12 @@ void main() {
 
     // Create a brand new building with 0 rooms
     await container.read(propertiesProvider.notifier).addProperty(
-          name: 'Green Heights',
-          type: PropertyType.building,
-          address: 'Sector 62',
-          city: 'Noida',
-          initialRoomCount: 0,
-        );
+      name: 'Green Heights',
+      type: PropertyType.building,
+      address: 'Sector 62',
+      city: 'Noida',
+      initialRoomCount: 0,
+    );
 
     final newProp = container.read(propertiesProvider).firstWhere((p) => p.name == 'Green Heights');
 

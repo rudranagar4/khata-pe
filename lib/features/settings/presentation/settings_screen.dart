@@ -95,48 +95,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: 18),
-          const _SectionHeader(title: 'PREFERENCES & LOCALIZATION'),
-
-          // Language
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardDark,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderDark),
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.language_rounded, color: Color(0xFF4ADE80)),
-                  title: const Text('Language (भाषा)', style: TextStyle(color: Colors.white)),
-                  subtitle: Text(settings.language == 'hi' ? 'हिंदी (Hindi)' : 'English', style: const TextStyle(color: AppColors.textSecondary)),
-                  trailing: DropdownButton<String>(
-                    value: settings.language,
-                    dropdownColor: AppColors.cardDark,
-                    style: const TextStyle(color: Colors.white),
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'en', child: Text('English')),
-                      DropdownMenuItem(value: 'hi', child: Text('हिंदी (Hindi)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        ref.read(userSettingsProvider.notifier).setLanguage(val);
-                      }
-                    },
-                  ),
-                ),
-                const Divider(color: AppColors.borderDark, height: 1),
-                ListTile(
-                  leading: const Icon(Icons.dark_mode_outlined, color: Color(0xFFFBBF24)),
-                  title: const Text('App Theme', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Dark Mode (Active)', style: TextStyle(color: AppColors.textSecondary)),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
           const _SectionHeader(title: 'SECURITY & REMINDERS'),
 
           Container(
@@ -149,8 +107,8 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.fingerprint_rounded, color: Color(0xFF4ADE80)),
-                  title: const Text('App Lock (Biometric / PIN)', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Require authentication to open app', style: TextStyle(color: AppColors.textSecondary)),
+                  title: const Text('App Lock (Biometric Unlock)', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Require fingerprint to open app', style: TextStyle(color: AppColors.textSecondary)),
                   value: settings.appLockEnabled,
                   activeColor: const Color(0xFF16A34A),
                   onChanged: (val) {

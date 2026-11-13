@@ -8,9 +8,18 @@ import '../../features/home/presentation/main_scaffold.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/properties/presentation/add_edit_property_screen.dart';
 import '../../features/properties/presentation/add_edit_unit_screen.dart';
+import '../../features/properties/domain/models/property.dart';
+import '../../features/properties/domain/models/unit.dart';
 import '../../features/tenants/presentation/tenant_detail_screen.dart';
 import '../../features/tenants/presentation/add_edit_tenant_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
+
+Map<String, dynamic>? _extraMap(Object? extra) {
+  if (extra == null) return null;
+  if (extra is Map<String, dynamic>) return extra;
+  if (extra is Map) return Map<String, dynamic>.from(extra);
+  return null;
+}
 
 final appRouter = GoRouter(
   initialLocation: '/splash',
@@ -30,7 +39,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/otp',
       builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final extra = _extraMap(state.extra) ?? {};
         return OtpVerifyScreen(
           phone: extra['phone'] as String? ?? '',
           name: extra['name'] as String? ?? '',
@@ -69,13 +78,22 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/add-property',
-      builder: (context, state) => const AddEditPropertyScreen(),
+      builder: (context, state) {
+        final extra = _extraMap(state.extra);
+        final propertyToEdit = extra?['propertyToEdit'] as Property?;
+        return AddEditPropertyScreen(propertyToEdit: propertyToEdit);
+      },
     ),
     GoRoute(
       path: '/add-unit/:propertyId',
-      builder: (context, state) => AddEditUnitScreen(
-        propertyId: state.pathParameters['propertyId']!,
-      ),
+      builder: (context, state) {
+        final extra = _extraMap(state.extra);
+        final unitToEdit = extra?['unitToEdit'] as PropertyUnit?;
+        return AddEditUnitScreen(
+          propertyId: state.pathParameters['propertyId']!,
+          unitToEdit: unitToEdit,
+        );
+      },
     ),
     GoRoute(
       path: '/tenant-detail/:id',
@@ -85,7 +103,15 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/add-tenant',
-      builder: (context, state) => const AddEditTenantScreen(),
+      builder: (context, state) {
+        final extra = _extraMap(state.extra);
+        final propertyId = extra?['propertyId'] as String?;
+        final unitId = extra?['unitId'] as String?;
+        return AddEditTenantScreen(
+          initialPropertyId: propertyId,
+          initialUnitId: unitId,
+        );
+      },
     ),
     GoRoute(
       path: '/expenses',
@@ -93,4 +119,3 @@ final appRouter = GoRouter(
     ),
   ],
 );
-

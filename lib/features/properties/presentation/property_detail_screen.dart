@@ -28,6 +28,57 @@ class PropertyDetailScreen extends ConsumerStatefulWidget {
 class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   UnitStatus? _statusFilter; // null = all, occupied, vacant
 
+  void _navigateToAddTenant(BuildContext context, String propertyId, [String? unitId]) {
+    try {
+      context.push('/add-tenant', extra: <String, dynamic>{
+        'propertyId': propertyId,
+        if (unitId != null) 'unitId': unitId,
+      });
+    } catch (_) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => AddEditTenantScreen(
+            initialPropertyId: propertyId,
+            initialUnitId: unitId,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _navigateToAddUnit(BuildContext context, String propertyId, [PropertyUnit? unitToEdit]) {
+    try {
+      context.push(
+        '/add-unit/$propertyId',
+        extra: unitToEdit != null ? <String, dynamic>{'unitToEdit': unitToEdit} : null,
+      );
+    } catch (_) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => AddEditUnitScreen(
+            propertyId: propertyId,
+            unitToEdit: unitToEdit,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _navigateToEditProperty(BuildContext context, Property property) {
+    try {
+      context.push('/add-property', extra: <String, dynamic>{'propertyToEdit': property});
+    } catch (_) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => AddEditPropertyScreen(propertyToEdit: property),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final properties = ref.watch(propertiesProvider);
@@ -65,28 +116,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           IconButton(
             icon: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFF4ADE80)),
             tooltip: 'Add Tenant to this Building',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddEditTenantScreen(
-                    initialPropertyId: property.id,
-                  ),
-                ),
-              );
-            },
+            onPressed: () => _navigateToAddTenant(context, property.id),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined, color: Colors.white),
             tooltip: 'Edit Building',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddEditPropertyScreen(propertyToEdit: property),
-                ),
-              );
-            },
+            onPressed: () => _navigateToEditProperty(context, property),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppColors.statusOverdue),
@@ -113,11 +148,13 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   ],
                 ),
               );
-              if (confirm == true) {
-                await ref.read(propertiesProvider.notifier).deleteProperty(property.id);
-                if (context.mounted) {
+              if (confirm == true && context.mounted) {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
                   context.pop();
                 }
+                await ref.read(propertiesProvider.notifier).deleteProperty(property.id);
               }
             },
           ),
@@ -128,14 +165,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         backgroundColor: const Color(0xFF16A34A),
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddEditUnitScreen(propertyId: property.id),
-            ),
-          );
-        },
+        onPressed: () => _navigateToAddUnit(context, property.id),
         icon: const Icon(Icons.add),
         label: const Text('Add Room (कमरा जोड़ें)', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
@@ -313,16 +343,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         visualDensity: VisualDensity.compact,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddEditTenantScreen(
-                              initialPropertyId: property.id,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () => _navigateToAddTenant(context, property.id),
                       icon: const Icon(Icons.person_add_alt_1_outlined, size: 15),
                       label: const Text('Tenant', style: TextStyle(fontSize: 12)),
                     ),
@@ -332,14 +353,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         visualDensity: VisualDensity.compact,
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddEditUnitScreen(propertyId: property.id),
-                          ),
-                        );
-                      },
+                      onPressed: () => _navigateToAddUnit(context, property.id),
                       icon: const Icon(Icons.add, size: 15),
                       label: const Text('Room', style: TextStyle(fontSize: 12)),
                     ),
@@ -365,8 +379,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
             const SizedBox(height: 14),
 
-            // 4. Rooms List
-            if (filteredUnits.isEmpty) ...[
+            // 4. Rooms List — using Column (not ListView) to avoid shrinkWrap layout crash
+            if (filteredUnits.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(36),
@@ -388,33 +402,33 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   ],
                 ),
               ),
-            ] else ...[
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredUnits.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final room = filteredUnits[index];
-                  final occupant = tenants
-                      .where((t) => t.propertyId == property.id && t.unitId == room.id && t.isActive)
-                      .firstOrNull;
-
-                  final rentEntry = occupant != null
-                      ? propEntries.where((e) => e.unitId == room.id && e.tenantId == occupant.id).firstOrNull
-                      : null;
-
-                  return _buildRoomCard(
-                    context: context,
-                    property: property,
-                    room: room,
-                    occupant: occupant,
-                    rentEntry: rentEntry,
-                    currentMonthKey: currentMonthKey,
-                  );
-                },
+            if (filteredUnits.isNotEmpty)
+              Column(
+                children: [
+                  for (int i = 0; i < filteredUnits.length; i++) ...[
+                    Builder(
+                      builder: (ctx) {
+                        final room = filteredUnits[i];
+                        final occupant = tenants
+                            .where((t) => t.propertyId == property.id && t.unitId == room.id && t.isActive)
+                            .firstOrNull;
+                        final rentEntry = occupant != null
+                            ? propEntries.where((e) => e.unitId == room.id && e.tenantId == occupant.id).firstOrNull
+                            : null;
+                        return _buildRoomCard(
+                          context: ctx,
+                          property: property,
+                          room: room,
+                          occupant: occupant,
+                          rentEntry: rentEntry,
+                          currentMonthKey: currentMonthKey,
+                        );
+                      },
+                    ),
+                    if (i < filteredUnits.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
               ),
-            ],
 
             const SizedBox(height: 40),
           ],
@@ -543,25 +557,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     color: AppColors.cardDarkElevated,
                     onSelected: (val) async {
                       if (val == 'tenant_action') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddEditTenantScreen(
-                              initialPropertyId: property.id,
-                              initialUnitId: room.id,
-                            ),
-                          ),
-                        );
+                        _navigateToAddTenant(context, property.id, room.id);
                       } else if (val == 'edit') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddEditUnitScreen(
-                              propertyId: property.id,
-                              unitToEdit: room,
-                            ),
-                          ),
-                        );
+                        _navigateToAddUnit(context, property.id, room);
                       } else if (val == 'delete') {
                         final confirm = await showDialog<bool>(
                           context: context,
@@ -775,23 +773,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddEditTenantScreen(
-                          initialPropertyId: property.id,
-                          initialUnitId: room.id,
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: () => _navigateToAddTenant(context, property.id, room.id),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B2433),
                     foregroundColor: const Color(0xFF4ADE80),
                     side: const BorderSide(color: Color(0xFF22C55E)),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     visualDensity: VisualDensity.compact,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   icon: const Icon(Icons.person_add_alt_1_outlined, size: 15),

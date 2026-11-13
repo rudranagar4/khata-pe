@@ -86,17 +86,15 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
         final prop = props.where((p) => p.id == widget.initialPropertyId).firstOrNull;
         if (prop != null && prop.units.isNotEmpty) {
           if (widget.initialUnitId != null) {
+            // A specific unit was pre-selected (e.g. tapped "Add Tenant" on a room card)
             final unit = prop.units.where((u) => u.id == widget.initialUnitId).firstOrNull;
             if (unit != null) {
               _rentController.text = unit.monthlyRent.toString();
               _depositController.text = unit.securityDeposit.toString();
             }
-          } else {
-            final targetUnit = prop.units.where((u) => u.status == UnitStatus.vacant).firstOrNull ?? prop.units.first;
-            _selectedUnitId = targetUnit.id;
-            _rentController.text = targetUnit.monthlyRent.toString();
-            _depositController.text = targetUnit.securityDeposit.toString();
           }
+          // If no unitId was provided, leave _selectedUnitId null so the user
+          // consciously picks a room from the dropdown (avoids silent wrong assignment)
         }
       }
     }
@@ -177,17 +175,17 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
       }
 
       if (mounted) {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          context.pop();
-        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF16A34A),
             content: Text(widget.tenantToEdit != null ? 'Tenant updated!' : 'Tenant added successfully!'),
           ),
         );
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          context.pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -456,6 +454,8 @@ class _AddEditTenantScreenState extends ConsumerState<AddEditTenantScreen> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           visualDensity: VisualDensity.compact,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: () => _showQuickAddRoomDialog(context, selectedProp),
                         icon: const Icon(Icons.add, size: 14),

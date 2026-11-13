@@ -2,11 +2,17 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/services/firebase_sync_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../domain/models/expense.dart';
 
 class ExpenseRepository {
   static const String _prefKey = 'khatape_expenses';
+  static const Set<String> _sampleExpenseIds = {'exp_1', 'exp_2', 'exp_3'};
+  static const Set<String> _samplePropertyIds = {
+    'prop_new_14', 'prop_sharma_complex', 'prop_sai_commercial', 'prop_green_residency',
+  };
+
   final SharedPreferences _prefs;
 
   ExpenseRepository(this._prefs);
@@ -16,59 +22,22 @@ class ExpenseRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        final expenses = list.map((e) => Expense.fromJson(e as Map<String, dynamic>)).toList();
-        bool migrated = false;
-        final updated = expenses.map((e) {
-          if (e.propertyId == 'prop_green_residency') {
-            migrated = true;
-            return e.copyWith(propertyId: 'prop_sai_commercial');
-          }
-          return e;
-        }).toList();
-        if (migrated) {
-          saveExpenses(updated);
-        }
-        return updated;
+        final expenses = list
+            .map((e) => Expense.fromJson(e as Map<String, dynamic>))
+            .where((e) => !_sampleExpenseIds.contains(e.id) && !_samplePropertyIds.contains(e.propertyId))
+            .toList();
+        return expenses;
       } catch (_) {}
     }
-    final seed = _getSeedExpenses();
-    saveExpenses(seed);
-    return seed;
+    return [];
   }
 
   Future<void> saveExpenses(List<Expense> expenses) async {
-    final encoded = jsonEncode(expenses.map((e) => e.toJson()).toList());
+    final clean = expenses
+        .where((e) => !_sampleExpenseIds.contains(e.id) && !_samplePropertyIds.contains(e.propertyId))
+        .toList();
+    final encoded = jsonEncode(clean.map((e) => e.toJson()).toList());
     await _prefs.setString(_prefKey, encoded);
-  }
-
-  List<Expense> _getSeedExpenses() {
-    final now = DateTime.now();
-    return [
-      Expense(
-        id: 'exp_1',
-        propertyId: 'prop_sharma_complex',
-        category: ExpenseCategory.repairs,
-        amount: 1500,
-        date: DateTime(now.year, now.month, 3),
-        note: 'Bathroom tap & pipe replacement in 101',
-      ),
-      Expense(
-        id: 'exp_2',
-        propertyId: 'prop_sharma_complex',
-        category: ExpenseCategory.societyCharges,
-        amount: 2200,
-        date: DateTime(now.year, now.month, 1),
-        note: 'Monthly society maintenance & guard salary share',
-      ),
-      Expense(
-        id: 'exp_3',
-        propertyId: 'prop_sai_commercial',
-        category: ExpenseCategory.propertyTax,
-        amount: 4500,
-        date: DateTime(now.year, now.month - 1, 15),
-        note: 'Municipal corporation annual property tax instalment',
-      ),
-    ];
   }
 }
 
@@ -103,19 +72,30 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
     final updated = [expense, ...state];
     state = updated;
     await _repo.saveExpenses(updated);
+    await FirebaseSyncService.syncExpense(expense.toJson());
   }
 
   Future<void> deleteExpense(String expenseId) async {
     final updated = state.where((e) => e.id != expenseId).toList();
     state = updated;
     await _repo.saveExpenses(updated);
+    await FirebaseSyncService.deleteExpense(expenseId);
   }
 
   /// Remove all expenses associated with a deleted property
   Future<void> removeExpensesForProperty(String propertyId) async {
+    final toRemove = state.where((e) => e.propertyId == propertyId).toList();
+    for (final e in toRemove) {
+      await FirebaseSyncService.deleteExpense(e.id);
+    }
     final updated = state.where((e) => e.propertyId != propertyId).toList();
     state = updated;
     await _repo.saveExpenses(updated);
+  }
+
+  Future<void> clearAllExpenses() async {
+    state = [];
+    await _repo.saveExpenses([]);
   }
 }
 
@@ -123,4 +103,3 @@ final expensesProvider = StateNotifierProvider<ExpensesNotifier, List<Expense>>(
   final repo = ref.watch(expenseRepositoryProvider);
   return ExpensesNotifier(repo);
 });
-

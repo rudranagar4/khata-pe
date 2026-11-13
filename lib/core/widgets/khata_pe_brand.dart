@@ -16,17 +16,26 @@ class KhataPeBrand extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Green Notebook / Ledger icon matching screenshot
-        Container(
-          width: iconSize,
-          height: iconSize,
-          decoration: BoxDecoration(
-            color: const Color(0xFF16A34A),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.all(5),
-          child: CustomPaint(
-            painter: _LedgerIconPainter(),
+        // Khata Pe App Logo
+        ClipRRect(
+          borderRadius: BorderRadius.circular(iconSize * 0.22),
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: iconSize,
+              height: iconSize,
+              decoration: BoxDecoration(
+                color: const Color(0xFF16A34A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(5),
+              child: CustomPaint(
+                painter: _LedgerIconPainter(),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 10),

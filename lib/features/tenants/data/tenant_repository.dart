@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/firebase_sync_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../properties/data/property_repository.dart';
 import '../../rent/data/rent_repository.dart';
@@ -9,6 +10,15 @@ import '../domain/models/tenant.dart';
 
 class TenantRepository {
   static const String _prefKey = 'khatape_tenants';
+  static const Set<String> _sampleTenantIds = {
+    't_mahesh', 't_mahipal', 't_bablu', 't_kiran', 't_urmila', 't_khan',
+    't_shyam_lal', 't_rinku', 't_jai_narayan', 't_sanjay', 't_pramod',
+    't_shiv_nandan', 't_ramanuj', 't_suraj', 'tenant_ramesh', 'tenant_priya', 'tenant_amit_shop',
+  };
+  static const Set<String> _samplePropertyIds = {
+    'prop_new_14', 'prop_sharma_complex', 'prop_sai_commercial', 'prop_green_residency',
+  };
+
   final SharedPreferences _prefs;
 
   TenantRepository(this._prefs);
@@ -18,110 +28,20 @@ class TenantRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        final loaded = list.map((e) {
-          final t = Tenant.fromJson(e as Map<String, dynamic>);
-          if (t.propertyId == 'prop_green_residency') {
-            return t.copyWith(propertyId: 'prop_sai_commercial');
-          }
-          return t;
-        }).toList();
-
-        final seedTenants = _getSeedTenants();
-        bool updated = false;
-        final result = List<Tenant>.from(loaded);
-        for (final seed in seedTenants) {
-          if (!result.any((t) => t.id == seed.id)) {
-            result.add(seed);
-            updated = true;
-          }
-        }
-        if (updated) {
-          saveTenants(result);
-        }
-        return result;
+        final loaded = list
+            .map((e) => Tenant.fromJson(e as Map<String, dynamic>))
+            .where((t) => !_sampleTenantIds.contains(t.id) && !_samplePropertyIds.contains(t.propertyId))
+            .toList();
+        return loaded;
       } catch (_) {}
     }
-    final seed = _getSeedTenants();
-    saveTenants(seed);
-    return seed;
+    return [];
   }
 
   Future<void> saveTenants(List<Tenant> tenants) async {
-    final encoded = jsonEncode(tenants.map((t) => t.toJson()).toList());
+    final clean = tenants.where((t) => !_sampleTenantIds.contains(t.id) && !_samplePropertyIds.contains(t.propertyId)).toList();
+    final encoded = jsonEncode(clean.map((t) => t.toJson()).toList());
     await _prefs.setString(_prefKey, encoded);
-  }
-
-  List<Tenant> _getSeedTenants() {
-    return [
-      // NEW 14 Tenants (from Ledger Image)
-      Tenant(id: 't_mahesh', name: 'MAHESH PAINTER', phone: '9876510001', propertyId: 'prop_new_14', unitId: 'unit_new14_1', moveInDate: DateTime(2024, 8, 25), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_mahipal', name: 'MAHIPAL', phone: '9876510002', propertyId: 'prop_new_14', unitId: 'unit_new14_2', moveInDate: DateTime(2026, 6, 28), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_bablu', name: 'BABLU', phone: '9876510003', propertyId: 'prop_new_14', unitId: 'unit_new14_3', moveInDate: DateTime(2012, 2, 1), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_kiran', name: 'KIRAN', phone: '9876510004', propertyId: 'prop_new_14', unitId: 'unit_new14_4', moveInDate: DateTime(2016, 4, 13), monthlyRent: 2630, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_urmila', name: 'URMILA', phone: '9876510005', propertyId: 'prop_new_14', unitId: 'unit_new14_5', moveInDate: DateTime(2026, 6, 9), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_khan', name: 'KHAN', phone: '9876510006', propertyId: 'prop_new_14', unitId: 'unit_new14_6', moveInDate: DateTime(2026, 4, 5), monthlyRent: 2630, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_shyam_lal', name: 'SHYAM LAL', phone: '9876510007', propertyId: 'prop_new_14', unitId: 'unit_new14_7', moveInDate: DateTime(2018, 7, 20), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_rinku', name: 'RINKU', phone: '9876510008', propertyId: 'prop_new_14', unitId: 'unit_new14_8', moveInDate: DateTime(2021, 11, 22), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_jai_narayan', name: 'JAI NARAYAN', phone: '9876510009', propertyId: 'prop_new_14', unitId: 'unit_new14_9', moveInDate: DateTime(2010, 5, 17), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_sanjay', name: 'SANJAY', phone: '9876510010', propertyId: 'prop_new_14', unitId: 'unit_new14_10', moveInDate: DateTime(2026, 9, 4), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_pramod', name: 'PRAMOD', phone: '9876510011', propertyId: 'prop_new_14', unitId: 'unit_new14_11', moveInDate: DateTime(2021, 12, 26), monthlyRent: 2630, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_shiv_nandan', name: 'SHIV NANDAN', phone: '9876510012', propertyId: 'prop_new_14', unitId: 'unit_new14_12', moveInDate: DateTime(2026, 9, 20), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_ramanuj', name: 'RAMANUJ', phone: '9876510013', propertyId: 'prop_new_14', unitId: 'unit_new14_13', moveInDate: DateTime(2008, 8, 2), monthlyRent: 2630, rentDueDay: 5, securityDeposit: 5000),
-      Tenant(id: 't_suraj', name: 'SURAJ', phone: '9876510014', propertyId: 'prop_new_14', unitId: 'unit_new14_14', moveInDate: DateTime(2025, 1, 1), monthlyRent: 2430, rentDueDay: 5, securityDeposit: 5000),
-
-      // Other Tenants
-      Tenant(
-        id: 'tenant_ramesh',
-        name: 'Ramesh Kumar',
-        phone: '9876543210',
-        altPhone: '9811122233',
-        email: 'ramesh.k@gmail.com',
-        idProofType: 'Aadhaar Card',
-        idProofNumber: '4532 8901 1234',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_101',
-        moveInDate: DateTime(2026, 1, 1),
-        agreementEndDate: DateTime(2026, 12, 31),
-        monthlyRent: 8500,
-        rentDueDay: 5,
-        securityDeposit: 17000,
-        isActive: true,
-        notes: 'Works at IT firm. Pays via UPI.',
-      ),
-      Tenant(
-        id: 'tenant_priya',
-        name: 'Priya Sharma',
-        phone: '9812345678',
-        email: 'priya.sharma@yahoo.com',
-        idProofType: 'PAN Card',
-        idProofNumber: 'ABCPS1234F',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_102',
-        moveInDate: DateTime(2026, 2, 1),
-        agreementEndDate: DateTime(2027, 1, 31),
-        monthlyRent: 14000,
-        rentDueDay: 1,
-        securityDeposit: 28000,
-        isActive: true,
-        notes: 'Family of 3. Very prompt with rent.',
-      ),
-      Tenant(
-        id: 'tenant_amit_shop',
-        name: 'Amit Patel (Patel Electronics)',
-        phone: '9988776655',
-        idProofType: 'GSTIN / Trade License',
-        idProofNumber: '07AAACP1234P1Z5',
-        propertyId: 'prop_sai_commercial',
-        unitId: 'unit_shop_1',
-        moveInDate: DateTime(2025, 8, 1),
-        agreementEndDate: DateTime(2027, 7, 31),
-        monthlyRent: 22000,
-        rentDueDay: 10,
-        securityDeposit: 50000,
-        isActive: true,
-        notes: 'Ground floor shop tenant.',
-      ),
-    ];
   }
 }
 
@@ -160,6 +80,7 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
     final updated = [...currentTenants, tenant];
     state = updated;
     await _repo.saveTenants(updated);
+    await FirebaseSyncService.syncTenant(tenant.toJson());
 
     // 1. Automatically mark the unit as occupied and sync rent if changed
     await _ref
@@ -191,9 +112,45 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
   }
 
   Future<void> updateTenant(Tenant tenant) async {
+    // Find the previous version of this tenant to detect property/unit changes
+    final previous = state.where((t) => t.id == tenant.id).firstOrNull;
+
     final updated = state.map((t) => t.id == tenant.id ? tenant : t).toList();
     state = updated;
     await _repo.saveTenants(updated);
+    await FirebaseSyncService.syncTenant(tenant.toJson());
+
+    // If the tenant moved to a different unit, free the old unit and occupy the new one
+    if (previous != null) {
+      final movedProperty = previous.propertyId != tenant.propertyId;
+      final movedUnit = previous.unitId != tenant.unitId;
+
+      if (movedProperty || movedUnit) {
+        // Free the old unit
+        await _ref
+            .read(propertiesProvider.notifier)
+            .setUnitOccupancy(previous.propertyId, previous.unitId, false);
+      }
+
+      // Always ensure the current unit is marked occupied (handles both
+      // same-unit edits where status may have drifted, and unit changes)
+      await _ref
+          .read(propertiesProvider.notifier)
+          .setUnitOccupancy(tenant.propertyId, tenant.unitId, true);
+
+      // If rent amount changed and unit rent differs, sync the unit's rent too
+      final prop = _ref.read(propertiesProvider).where((p) => p.id == tenant.propertyId).firstOrNull;
+      final unit = prop?.units.where((u) => u.id == tenant.unitId).firstOrNull;
+      if (unit != null && unit.monthlyRent != tenant.monthlyRent) {
+        await _ref.read(propertiesProvider.notifier).updateUnit(
+          tenant.propertyId,
+          unit.copyWith(
+            monthlyRent: tenant.monthlyRent,
+            securityDeposit: tenant.securityDeposit,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> markMovedOut(String tenantId, DateTime moveOutDate) async {
@@ -207,6 +164,9 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
     }).toList();
     state = updated;
     await _repo.saveTenants(updated);
+    if (found != null) {
+      await FirebaseSyncService.syncTenant(found!.toJson());
+    }
 
     // Free up the unit to vacant
     if (found != null) {
@@ -221,6 +181,7 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
     final updated = state.where((t) => t.id != tenantId).toList();
     state = updated;
     await _repo.saveTenants(updated);
+    await FirebaseSyncService.deleteTenant(tenantId);
 
     // 1. Make unit vacant if tenant was found
     if (tenant != null) {
@@ -238,10 +199,16 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
     final propTenants = state.where((t) => t.propertyId == propertyId).toList();
     for (final t in propTenants) {
       await _ref.read(rentLedgerProvider.notifier).removeEntriesForTenant(t.id);
+      await FirebaseSyncService.deleteTenant(t.id);
     }
     final updated = state.where((t) => t.propertyId != propertyId).toList();
     state = updated;
     await _repo.saveTenants(updated);
+  }
+
+  Future<void> clearAllTenants() async {
+    state = [];
+    await _repo.saveTenants([]);
   }
 }
 

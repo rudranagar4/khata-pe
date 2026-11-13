@@ -155,43 +155,46 @@ class PropertiesListScreen extends ConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.statusPaidBg,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '${prop.occupiedRooms}/${prop.totalRooms} Rooms Occupied',
-                                          style: const TextStyle(
-                                            color: Color(0xFF4ADE80),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                      if (prop.vacantRooms > 0) ...[
-                                        const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1E2838),
+                                            color: AppColors.statusPaidBg,
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Text(
-                                            '${prop.vacantRooms} Vacant',
+                                            '${prop.occupiedRooms}/${prop.totalRooms} Rooms Occupied',
                                             style: const TextStyle(
-                                              color: AppColors.textSecondary,
-                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF4ADE80),
+                                              fontWeight: FontWeight.bold,
                                               fontSize: 12,
                                             ),
                                           ),
                                         ),
+                                        if (prop.vacantRooms > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF1E2838),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '${prop.vacantRooms} Vacant',
+                                              style: const TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
                                       ],
-                                    ],
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [

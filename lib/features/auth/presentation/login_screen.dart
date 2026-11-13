@@ -13,22 +13,25 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phoneController = TextEditingController();
-  final _nameController = TextEditingController(text: 'Anil');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _phoneController.dispose();
-    _nameController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleSendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length != 10) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit mobile number');
+  void _handleLogin() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Please enter both username and password');
       return;
     }
 
@@ -38,32 +41,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await ref.read(authRepositoryProvider).sendOtp(phone);
+      final user = await ref.read(authRepositoryProvider).loginWithUsername(username, password);
+      ref.read(currentUserProvider.notifier).state = user;
       if (mounted) {
-        context.push('/otp', extra: {
-          'phone': phone,
-          'name': _nameController.text.trim(),
-        });
+        context.go('/home');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to send OTP. Please try again.');
+      setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _handleQuickDemoLogin() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
-      final user = await ref.read(authRepositoryProvider).verifyOtp(
-            '9876543210',
-            '123456',
-            name: 'Anil (Landlord)',
-          );
+      final user = await ref.read(authRepositoryProvider).loginDemo();
       ref.read(currentUserProvider.notifier).state = user;
       if (mounted) {
         context.go('/home');
       }
+    } catch (e) {
+      setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -92,17 +94,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Enter your mobile number to sign in or register as property owner.',
+                'Sign in with your secure credentials to manage your properties.',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 32),
 
-              // Owner Name
+              // Username Field
               const Text(
-                'Your Full Name',
+                'Username',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -117,7 +119,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   border: Border.all(color: const Color(0xFF263345)),
                 ),
                 child: TextField(
-                  controller: _nameController,
+                  controller: _usernameController,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
@@ -125,7 +129,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     focusedBorder: InputBorder.none,
                     filled: false,
                     contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    hintText: 'e.g. Anil',
+                    hintText: 'Enter your username',
+                    hintStyle: TextStyle(color: AppColors.textMuted),
                     prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textSecondary),
                   ),
                 ),
@@ -133,9 +138,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Phone Number
+              // Password Field
               const Text(
-                'Phone Number',
+                'Password',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -150,44 +155,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   border: Border.all(color: const Color(0xFF263345)),
                 ),
                 child: TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  maxLength: 10,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  controller: _passwordController,
+                  obscureText: !_isPasswordVisible,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  style: const TextStyle(color: Colors.white),
+                  onSubmitted: (_) => _handleLogin(),
                   decoration: InputDecoration(
-                    counterText: '',
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     filled: false,
-                    hintText: '98765 43210',
-                    prefixIcon: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      alignment: Alignment.centerLeft,
-                      width: 75,
-                      child: const Text(
-                        '🇮🇳 +91',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Colors.white,
-                        ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    hintText: 'Enter your password',
+                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textSecondary),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        color: AppColors.textSecondary,
+                        size: 20,
                       ),
+                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                     ),
                   ),
                 ),
               ),
 
               if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: AppColors.statusOverdue, fontSize: 13),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline_rounded, color: AppColors.statusOverdue, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: AppColors.statusOverdue, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
 
+              // Sign In Button
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -196,7 +217,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     backgroundColor: const Color(0xFF16A34A),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  onPressed: _isLoading ? null : _handleSendOtp,
+                  onPressed: _isLoading ? null : _handleLogin,
                   child: _isLoading
                       ? const SizedBox(
                           height: 22,
@@ -204,7 +225,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Text(
-                          'Get OTP (ओटीपी पाएं)',
+                          'Sign In (लॉग इन)',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -212,25 +233,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               const SizedBox(height: 20),
 
+              // Demo Login Button
               Center(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFBBF24),
                     side: const BorderSide(color: Color(0xFFFBBF24)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   onPressed: _isLoading ? null : _handleQuickDemoLogin,
-                  icon: const Icon(Icons.flash_on_rounded, color: Color(0xFFFBBF24)),
-                  label: const Text('Quick Explore / Demo Landlord'),
+                  icon: const Icon(Icons.play_circle_outline_rounded, color: Color(0xFFFBBF24)),
+                  label: const Text('Quick Demo Login (डेमो लॉगिन)'),
                 ),
               ),
 
-              const SizedBox(height: 40),
-              Center(
+              const SizedBox(height: 36),
+              const Center(
                 child: Text(
-                  'By continuing, you agree to Khata Pe Terms & Privacy Policy.\nData is stored securely on Google Cloud.',
+                  'Your credentials are securely encrypted with SHA-256.\nData is protected with end-to-end security.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textMuted,
                     height: 1.5,

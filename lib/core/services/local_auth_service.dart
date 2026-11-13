@@ -15,18 +15,19 @@ class LocalAuthService {
     }
   }
 
-  /// Trigger biometric or system PIN authentication
-  static Future<bool> authenticate({String reason = 'Authenticate to access Khata Pe'}) async {
+  /// Trigger strictly biometric authentication (fingerprint / face ID)
+  static Future<bool> authenticate({String reason = 'Scan your fingerprint to access Khata Pe'}) async {
     try {
       final isAvailable = await isBiometricsAvailable();
-      if (!isAvailable) return true; // If device does not support it, allow through
+      if (!isAvailable) return true; // If device does not support biometrics (e.g. emulator/tests), allow through
 
       return await _auth.authenticate(
         localizedReason: reason,
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
     } on PlatformException {
       return false;
     }
   }
 }
-

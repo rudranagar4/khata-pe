@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
-import '../../../core/services/pdf_receipt_service.dart';
 import '../../properties/data/property_repository.dart';
 import '../../tenants/data/tenant_repository.dart';
-import '../../auth/data/auth_repository.dart';
 import '../data/rent_repository.dart';
 import '../domain/models/payment.dart';
 import '../domain/models/rent_entry.dart';
@@ -36,7 +34,6 @@ class _AddPaymentDialogState extends ConsumerState<AddPaymentDialog> {
 
   DateTime _selectedDate = DateTime.now();
   PaymentMode _selectedMode = PaymentMode.cash;
-  bool _shareReceipt = true;
   bool _isSaving = false;
 
   @override
@@ -68,7 +65,7 @@ class _AddPaymentDialogState extends ConsumerState<AddPaymentDialog> {
     setState(() => _isSaving = true);
 
     try {
-      final payment = await ref.read(rentLedgerProvider.notifier).recordPayment(
+      await ref.read(rentLedgerProvider.notifier).recordPayment(
             rentEntryId: widget.entry.id,
             amount: amount,
             date: _selectedDate,
@@ -87,31 +84,9 @@ class _AddPaymentDialogState extends ConsumerState<AddPaymentDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFF16A34A),
-          content: Text('Payment of ₹$amount recorded! Receipt: ${payment.receiptNo}'),
+          content: Text('Payment of ₹$amount recorded successfully!'),
         ),
       );
-
-      // Offer receipt share if checked
-      if (_shareReceipt) {
-        final tenants = ref.read(tenantsProvider);
-        final properties = ref.read(propertiesProvider);
-        final user = ref.read(currentUserProvider);
-
-        final tenant = tenants.where((t) => t.id == widget.entry.tenantId).firstOrNull;
-        if (tenant != null) {
-          final property = properties.where((p) => p.id == widget.entry.propertyId).firstOrNull;
-          final unit = property?.units.where((u) => u.id == widget.entry.unitId).firstOrNull;
-
-          await PdfReceiptService.shareReceipt(
-            payment: payment,
-            rentEntry: widget.entry,
-            tenant: tenant,
-            property: property,
-            unit: unit,
-            ownerName: user?.name ?? 'Anil',
-          );
-        }
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -396,37 +371,6 @@ class _AddPaymentDialogState extends ConsumerState<AddPaymentDialog> {
                   hintStyle: TextStyle(color: Color(0xFF5D6F85), fontSize: 14),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Share PDF receipt on WhatsApp (Checkbox on right matching Image 2)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Share PDF receipt on WhatsApp',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Generates stamped receipt instantly',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                Checkbox(
-                  value: _shareReceipt,
-                  activeColor: const Color(0xFF16A34A),
-                  checkColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  side: const BorderSide(color: Color(0xFF3B4D63), width: 1.5),
-                  onChanged: (val) => setState(() => _shareReceipt = val ?? true),
-                ),
-              ],
             ),
 
             const SizedBox(height: 24),

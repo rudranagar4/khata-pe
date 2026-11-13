@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/services/firebase_sync_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../tenants/data/tenant_repository.dart';
 import '../../tenants/domain/models/tenant.dart';
@@ -13,6 +14,17 @@ import '../../../../core/utils/date_formatter.dart';
 class RentRepository {
   static const String _prefKey = 'khatape_rent_entries';
   static const String _prefReceiptCounterKey = 'khatape_receipt_counter';
+  static const Set<String> _sampleRentEntryIds = {
+    're_new14_1', 're_new14_2', 're_new14_3', 're_new14_4', 're_new14_5',
+    're_new14_6', 're_new14_7', 're_new14_8', 're_new14_9', 're_new14_10',
+    're_new14_11', 're_new14_12', 're_new14_13', 're_new14_14',
+    'entry_ramesh_current', 'entry_priya_current', 'entry_amit_current',
+    'entry_ramesh_prev', 'entry_priya_prev',
+  };
+  static const Set<String> _samplePropertyIds = {
+    'prop_new_14', 'prop_sharma_complex', 'prop_sai_commercial', 'prop_green_residency',
+  };
+
   final SharedPreferences _prefs;
 
   RentRepository(this._prefs);
@@ -22,28 +34,21 @@ class RentRepository {
     if (raw != null) {
       try {
         final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-        final entries = list.map((e) => RentEntry.fromJson(e as Map<String, dynamic>)).toList();
-        bool migrated = false;
-        final updated = entries.map((e) {
-          if (e.propertyId == 'prop_green_residency') {
-            migrated = true;
-            return e.copyWith(propertyId: 'prop_sai_commercial');
-          }
-          return e;
-        }).toList();
-        if (migrated) {
-          saveRentEntries(updated);
-        }
-        return updated;
+        final entries = list
+            .map((e) => RentEntry.fromJson(e as Map<String, dynamic>))
+            .where((e) => !_sampleRentEntryIds.contains(e.id) && !_samplePropertyIds.contains(e.propertyId))
+            .toList();
+        return entries;
       } catch (_) {}
     }
-    final seed = _getSeedRentEntries();
-    saveRentEntries(seed);
-    return seed;
+    return [];
   }
 
   Future<void> saveRentEntries(List<RentEntry> entries) async {
-    final encoded = jsonEncode(entries.map((e) => e.toJson()).toList());
+    final clean = entries
+        .where((e) => !_sampleRentEntryIds.contains(e.id) && !_samplePropertyIds.contains(e.propertyId))
+        .toList();
+    final encoded = jsonEncode(clean.map((e) => e.toJson()).toList());
     await _prefs.setString(_prefKey, encoded);
   }
 
@@ -52,135 +57,6 @@ class RentRepository {
     final next = current + 1;
     _prefs.setInt(_prefReceiptCounterKey, next);
     return next;
-  }
-
-  List<RentEntry> _getSeedRentEntries() {
-    final now = DateTime.now();
-    final currentMonthKey = DateFormatter.toMonthKey(now); // e.g. "2026-11"
-    final prevMonthKey = DateFormatter.getPreviousMonth(currentMonthKey); // e.g. "2026-10"
-
-    return [
-      // NEW 14 Entries (Exact match to uploaded Khata Ledger)
-      RentEntry(id: 're_new14_1', tenantId: 't_mahesh', propertyId: 'prop_new_14', unitId: 'unit_new14_1', month: currentMonthKey, openingBalance: 5380, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_2', tenantId: 't_mahipal', propertyId: 'prop_new_14', unitId: 'unit_new14_2', month: currentMonthKey, openingBalance: 1220, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_3', tenantId: 't_bablu', propertyId: 'prop_new_14', unitId: 'unit_new14_3', month: currentMonthKey, openingBalance: 6760, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_4', tenantId: 't_kiran', propertyId: 'prop_new_14', unitId: 'unit_new14_4', month: currentMonthKey, openingBalance: 0, expectedAmount: 2630, extraCharges: 800, extraChargesNote: 'Electricity', dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_5', tenantId: 't_urmila', propertyId: 'prop_new_14', unitId: 'unit_new14_5', month: currentMonthKey, openingBalance: 730, expectedAmount: 2430, extraCharges: 300, extraChargesNote: 'Electricity', dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_6', tenantId: 't_khan', propertyId: 'prop_new_14', unitId: 'unit_new14_6', month: currentMonthKey, openingBalance: 0, expectedAmount: 2630, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_7', tenantId: 't_shyam_lal', propertyId: 'prop_new_14', unitId: 'unit_new14_7', month: currentMonthKey, openingBalance: 2430, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_8', tenantId: 't_rinku', propertyId: 'prop_new_14', unitId: 'unit_new14_8', month: currentMonthKey, openingBalance: 0, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_9', tenantId: 't_jai_narayan', propertyId: 'prop_new_14', unitId: 'unit_new14_9', month: currentMonthKey, openingBalance: 7160, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_10', tenantId: 't_sanjay', propertyId: 'prop_new_14', unitId: 'unit_new14_10', month: currentMonthKey, openingBalance: 30, expectedAmount: 2430, extraCharges: 300, extraChargesNote: 'Electricity', dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_11', tenantId: 't_pramod', propertyId: 'prop_new_14', unitId: 'unit_new14_11', month: currentMonthKey, openingBalance: 7880, expectedAmount: 2630, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_12', tenantId: 't_shiv_nandan', propertyId: 'prop_new_14', unitId: 'unit_new14_12', month: currentMonthKey, openingBalance: 0, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_13', tenantId: 't_ramanuj', propertyId: 'prop_new_14', unitId: 'unit_new14_13', month: currentMonthKey, openingBalance: 5690, expectedAmount: 2630, extraCharges: 300, extraChargesNote: 'Electricity', dueDate: DateTime(now.year, now.month, 5)),
-      RentEntry(id: 're_new14_14', tenantId: 't_suraj', propertyId: 'prop_new_14', unitId: 'unit_new14_14', month: currentMonthKey, openingBalance: 5500, expectedAmount: 2430, extraCharges: 0, dueDate: DateTime(now.year, now.month, 5)),
-
-      // Current Month - Ramesh: Paid in Full
-      RentEntry(
-        id: 'entry_ramesh_current',
-        tenantId: 'tenant_ramesh',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_101',
-        month: currentMonthKey,
-        expectedAmount: 8500,
-        extraCharges: 450, // Electricity reading
-        extraChargesNote: 'Electricity bill (90 units @ ₹5)',
-        dueDate: DateTime(now.year, now.month, 5),
-        amountReceived: 8950,
-        payments: [
-          Payment(
-            id: 'pay_1',
-            rentEntryId: 'entry_ramesh_current',
-            amount: 8950,
-            date: DateTime(now.year, now.month, 4),
-            mode: PaymentMode.cash,
-            referenceNo: 'Cash Received',
-            receiptNo: 'KP-2026-1001',
-            note: 'Paid in cash at room',
-          ),
-        ],
-      ),
-
-      // Current Month - Priya: Partially Paid
-      RentEntry(
-        id: 'entry_priya_current',
-        tenantId: 'tenant_priya',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_102',
-        month: currentMonthKey,
-        expectedAmount: 14000,
-        dueDate: DateTime(now.year, now.month, 1),
-        amountReceived: 8000,
-        payments: [
-          Payment(
-            id: 'pay_2',
-            rentEntryId: 'entry_priya_current',
-            amount: 8000,
-            date: DateTime(now.year, now.month, 2),
-            mode: PaymentMode.bank,
-            referenceNo: 'IMPS/HDFC/882199',
-            receiptNo: 'KP-2026-1002',
-            note: 'First installment via Bank. Remaining next week.',
-          ),
-        ],
-      ),
-
-      // Current Month - Amit Patel Shop: Overdue / Due
-      RentEntry(
-        id: 'entry_amit_current',
-        tenantId: 'tenant_amit_shop',
-        propertyId: 'prop_sai_commercial',
-        unitId: 'unit_shop_1',
-        month: currentMonthKey,
-        expectedAmount: 22000,
-        dueDate: DateTime(now.year, now.month, 10),
-        amountReceived: 0,
-        payments: [],
-      ),
-
-      // Previous Month - Historical Entries
-      RentEntry(
-        id: 'entry_ramesh_prev',
-        tenantId: 'tenant_ramesh',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_101',
-        month: prevMonthKey,
-        expectedAmount: 8500,
-        dueDate: DateTime(now.year, now.month - 1, 5),
-        amountReceived: 8500,
-        payments: [
-          Payment(
-            id: 'pay_prev_1',
-            rentEntryId: 'entry_ramesh_prev',
-            amount: 8500,
-            date: DateTime(now.year, now.month - 1, 5),
-            mode: PaymentMode.cash,
-            receiptNo: 'KP-2026-0988',
-          ),
-        ],
-      ),
-      RentEntry(
-        id: 'entry_priya_prev',
-        tenantId: 'tenant_priya',
-        propertyId: 'prop_sharma_complex',
-        unitId: 'unit_102',
-        month: prevMonthKey,
-        expectedAmount: 14000,
-        dueDate: DateTime(now.year, now.month - 1, 1),
-        amountReceived: 14000,
-        payments: [
-          Payment(
-            id: 'pay_prev_2',
-            rentEntryId: 'entry_priya_prev',
-            amount: 14000,
-            date: DateTime(now.year, now.month - 1, 1),
-            mode: PaymentMode.bank,
-            receiptNo: 'KP-2026-0989',
-          ),
-        ],
-      ),
-    ];
   }
 }
 
@@ -249,11 +125,16 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
     final updated = [...state, newEntry];
     state = updated;
     await _repo.saveRentEntries(updated);
+    await FirebaseSyncService.syncRentEntry(newEntry.toJson());
     return newEntry;
   }
 
   /// Remove all rent entries for a specific tenant (called upon tenant deletion)
   Future<void> removeEntriesForTenant(String tenantId) async {
+    final toRemove = state.where((e) => e.tenantId == tenantId).toList();
+    for (final e in toRemove) {
+      await FirebaseSyncService.deleteRentEntry(e.id);
+    }
     final updated = state.where((e) => e.tenantId != tenantId).toList();
     state = updated;
     await _repo.saveRentEntries(updated);
@@ -261,6 +142,10 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
 
   /// Remove all rent entries for a specific property (called upon property deletion)
   Future<void> removeEntriesForProperty(String propertyId) async {
+    final toRemove = state.where((e) => e.propertyId == propertyId).toList();
+    for (final e in toRemove) {
+      await FirebaseSyncService.deleteRentEntry(e.id);
+    }
     final updated = state.where((e) => e.propertyId != propertyId).toList();
     state = updated;
     await _repo.saveRentEntries(updated);
@@ -268,6 +153,10 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
 
   /// Remove all rent entries for a specific unit (called upon room deletion)
   Future<void> removeEntriesForUnit(String propertyId, String unitId) async {
+    final toRemove = state.where((e) => e.propertyId == propertyId && e.unitId == unitId).toList();
+    for (final e in toRemove) {
+      await FirebaseSyncService.deleteRentEntry(e.id);
+    }
     final updated = state.where((e) => !(e.propertyId == propertyId && e.unitId == unitId)).toList();
     state = updated;
     await _repo.saveRentEntries(updated);
@@ -298,40 +187,50 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
       createdAt: DateTime.now(),
     );
 
+    RentEntry? changedEntry;
     final updated = state.map((entry) {
       if (entry.id == rentEntryId) {
         final newReceived = entry.amountReceived + amount;
         final newPayments = [...entry.payments, payment];
-        return entry.copyWith(
+        changedEntry = entry.copyWith(
           amountReceived: newReceived,
           payments: newPayments,
         );
+        return changedEntry!;
       }
       return entry;
     }).toList();
 
     state = updated;
     await _repo.saveRentEntries(updated);
+    if (changedEntry != null) {
+      await FirebaseSyncService.syncRentEntry(changedEntry!.toJson());
+    }
     return payment;
   }
 
   /// Undo / remove a payment
   Future<void> undoPayment(String rentEntryId, String paymentId) async {
+    RentEntry? changedEntry;
     final updated = state.map((entry) {
       if (entry.id == rentEntryId) {
         final targetPay = entry.payments.firstWhere((p) => p.id == paymentId);
         final newReceived = entry.amountReceived - targetPay.amount;
         final newPayments = entry.payments.where((p) => p.id != paymentId).toList();
-        return entry.copyWith(
+        changedEntry = entry.copyWith(
           amountReceived: newReceived < 0 ? 0 : newReceived,
           payments: newPayments,
         );
+        return changedEntry!;
       }
       return entry;
     }).toList();
 
     state = updated;
     await _repo.saveRentEntries(updated);
+    if (changedEntry != null) {
+      await FirebaseSyncService.syncRentEntry(changedEntry!.toJson());
+    }
   }
 
   /// Override rent amount or add utility charges / late fee
@@ -341,19 +240,29 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
     int? extraCharges,
     String? extraChargesNote,
   }) async {
+    RentEntry? changedEntry;
     final updated = state.map((entry) {
       if (entry.id == rentEntryId) {
-        return entry.copyWith(
+        changedEntry = entry.copyWith(
           expectedAmount: expectedAmount ?? entry.expectedAmount,
           extraCharges: extraCharges ?? entry.extraCharges,
           extraChargesNote: extraChargesNote ?? entry.extraChargesNote,
         );
+        return changedEntry!;
       }
       return entry;
     }).toList();
 
     state = updated;
     await _repo.saveRentEntries(updated);
+    if (changedEntry != null) {
+      await FirebaseSyncService.syncRentEntry(changedEntry!.toJson());
+    }
+  }
+
+  Future<void> clearAllRentEntries() async {
+    state = [];
+    await _repo.saveRentEntries([]);
   }
 }
 
@@ -372,4 +281,3 @@ final currentMonthEntriesProvider = Provider<List<RentEntry>>((ref) {
   final allEntries = ref.watch(rentLedgerProvider);
   return allEntries.where((e) => e.month == monthKey).toList();
 });
-

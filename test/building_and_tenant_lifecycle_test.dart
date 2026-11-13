@@ -204,8 +204,20 @@ void main() {
   });
 
   test('Adding a tenant to buildings other than NEW 14 succeeds and generates rent ledger entry', () async {
+    final propertiesNotifier = container.read(propertiesProvider.notifier);
+    await propertiesNotifier.addProperty(
+      name: 'Sharma Niwas (Building 1)',
+      type: PropertyType.building,
+      address: 'Lane 2',
+      city: 'Delhi',
+      initialRoomCount: 2,
+      defaultRoomRent: 8500,
+      defaultRoomDeposit: 17000,
+      startingRoomNumber: 101,
+    );
+
     final properties = container.read(propertiesProvider);
-    final sharmaProp = properties.firstWhere((p) => p.id == 'prop_sharma_complex');
+    final sharmaProp = properties.firstWhere((p) => p.name.contains('Sharma Niwas'));
     final vacantUnit = sharmaProp.units.firstWhere((u) => u.status == UnitStatus.vacant);
 
     final tenantsNotifier = container.read(tenantsProvider.notifier);
@@ -231,7 +243,7 @@ void main() {
     expect(allTenants.any((t) => t.id == 'tenant_non_new14_user'), isTrue);
 
     // Verify unit status is updated to occupied in Sharma Niwas
-    final updatedSharmaProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sharma_complex');
+    final updatedSharmaProp = container.read(propertiesProvider).firstWhere((p) => p.id == sharmaProp.id);
     final updatedUnit = updatedSharmaProp.units.firstWhere((u) => u.id == vacantUnit.id);
     expect(updatedUnit.status, UnitStatus.occupied);
 
@@ -240,23 +252,52 @@ void main() {
     final rentEntries = container.read(rentLedgerProvider);
     final tenantEntry = rentEntries.firstWhere((e) => e.tenantId == 'tenant_non_new14_user' && e.month == currentMonthKey);
     expect(tenantEntry.expectedAmount, vacantUnit.monthlyRent);
-    expect(tenantEntry.propertyId, 'prop_sharma_complex');
+    expect(tenantEntry.propertyId, sharmaProp.id);
   });
 
-  test('Sai Commercial building and Amit Patel tenant are correctly linked', () async {
+  test('Commercial building and Amit Patel tenant are correctly linked', () async {
+    final propertiesNotifier = container.read(propertiesProvider.notifier);
+    final tenantsNotifier = container.read(tenantsProvider.notifier);
+
+    await propertiesNotifier.addProperty(
+      name: 'Sai Commercial',
+      type: PropertyType.shop,
+      address: 'Main Market',
+      city: 'Delhi',
+      initialRoomCount: 1,
+      defaultRoomRent: 22000,
+      defaultRoomDeposit: 44000,
+      startingRoomNumber: 1,
+    );
+
     final properties = container.read(propertiesProvider);
-    final saiProp = properties.firstWhere((p) => p.id == 'prop_sai_commercial');
+    final saiProp = properties.firstWhere((p) => p.name.contains('Sai Commercial'));
     expect(saiProp.name, contains('Sai Commercial'));
 
+    final now = DateTime.now();
+    final amitTenant = Tenant(
+      id: 'tenant_amit_shop',
+      name: 'Amit Patel',
+      phone: '9811002233',
+      propertyId: saiProp.id,
+      unitId: saiProp.units.first.id,
+      moveInDate: DateTime(now.year, now.month, 1),
+      monthlyRent: 22000,
+      rentDueDay: 10,
+      securityDeposit: 44000,
+      isActive: true,
+    );
+    await tenantsNotifier.addTenant(amitTenant);
+
     final tenants = container.read(tenantsProvider);
-    final amitTenant = tenants.firstWhere((t) => t.id == 'tenant_amit_shop');
-    expect(amitTenant.propertyId, 'prop_sai_commercial');
+    final foundAmit = tenants.firstWhere((t) => t.id == 'tenant_amit_shop');
+    expect(foundAmit.propertyId, saiProp.id);
 
     final rentEntries = container.read(rentLedgerProvider);
     final amitEntries = rentEntries.where((e) => e.tenantId == 'tenant_amit_shop').toList();
     expect(amitEntries, isNotEmpty);
     for (final e in amitEntries) {
-      expect(e.propertyId, 'prop_sai_commercial');
+      expect(e.propertyId, saiProp.id);
     }
   });
 
@@ -264,19 +305,28 @@ void main() {
     final propertiesNotifier = container.read(propertiesProvider.notifier);
     final tenantsNotifier = container.read(tenantsProvider.notifier);
 
-    // Add room to Sai Commercial
-    final newRoom = const PropertyUnit(
+    await propertiesNotifier.addProperty(
+      name: 'Sai Commercial Hub',
+      type: PropertyType.shop,
+      address: 'Ring Road',
+      city: 'Delhi',
+      initialRoomCount: 0,
+    );
+    final prop = container.read(propertiesProvider).firstWhere((p) => p.name == 'Sai Commercial Hub');
+
+    // Add room to Sai Commercial Hub
+    final newRoom = PropertyUnit(
       id: 'unit_sai_301',
-      propertyId: 'prop_sai_commercial',
+      propertyId: prop.id,
       unitName: 'Room 301',
       floor: '3rd Floor',
       monthlyRent: 12000,
       securityDeposit: 24000,
       status: UnitStatus.vacant,
     );
-    await propertiesNotifier.addUnit('prop_sai_commercial', newRoom);
+    await propertiesNotifier.addUnit(prop.id, newRoom);
 
-    final saiProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sai_commercial');
+    final saiProp = container.read(propertiesProvider).firstWhere((p) => p.id == prop.id);
     expect(saiProp.units.any((u) => u.id == 'unit_sai_301'), isTrue);
 
     // Add tenant to this new room
@@ -285,7 +335,7 @@ void main() {
       id: 'tenant_sai_301',
       name: 'Vikas Gupta',
       phone: '9988776655',
-      propertyId: 'prop_sai_commercial',
+      propertyId: prop.id,
       unitId: 'unit_sai_301',
       moveInDate: DateTime(now.year, now.month, 1),
       monthlyRent: 12000,
@@ -295,12 +345,12 @@ void main() {
     );
     await tenantsNotifier.addTenant(newTenant);
 
-    final updatedSaiProp = container.read(propertiesProvider).firstWhere((p) => p.id == 'prop_sai_commercial');
+    final updatedSaiProp = container.read(propertiesProvider).firstWhere((p) => p.id == prop.id);
     final room = updatedSaiProp.units.firstWhere((u) => u.id == 'unit_sai_301');
     expect(room.status, UnitStatus.occupied);
 
     final currentMonthKey = DateFormatter.toMonthKey(now);
     final entries = container.read(rentLedgerProvider);
-    expect(entries.any((e) => e.tenantId == 'tenant_sai_301' && e.month == currentMonthKey && e.propertyId == 'prop_sai_commercial'), isTrue);
+    expect(entries.any((e) => e.tenantId == 'tenant_sai_301' && e.month == currentMonthKey && e.propertyId == prop.id), isTrue);
   });
 }
