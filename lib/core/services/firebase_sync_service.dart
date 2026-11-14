@@ -10,6 +10,15 @@ class FirebaseSyncService {
   static const String projectId = 'khata-pe';
   static const String projectNumber = '657069485194';
 
+  static String _activeUserId = 'owner_advanilnagar';
+  static void setActiveUser(String userId) {
+    if (userId.isNotEmpty) {
+      _activeUserId = userId;
+    }
+  }
+
+  static String get activeUserId => _activeUserId;
+
   static FirebaseFirestore? get firestore {
     if (!_isInitialized) return null;
     try {
@@ -43,11 +52,27 @@ class FirebaseSyncService {
   static Future<void> _writeDoc(String collection, String id, Map<String, dynamic> data) async {
     if (!_isInitialized || firestore == null || id.isEmpty) return;
     try {
-      // Non-blocking fire-and-forget cloud write so UI never hangs
+      final docData = Map<String, dynamic>.from(data);
+      docData['userId'] = _activeUserId;
+      docData['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Dual-write: write to user-scoped subcollection AND top-level collection
+      // 1. User-scoped path: users/{userId}/{collection}/{id}
+      firestore!
+          .collection('users')
+          .doc(_activeUserId)
+          .collection(collection)
+          .doc(id)
+          .set(docData, SetOptions(merge: true))
+          .catchError((e) {
+        debugPrint('Firestore write users/$_activeUserId/$collection/$id error: $e');
+      });
+
+      // 2. Global path: {collection}/{id}
       firestore!
           .collection(collection)
           .doc(id)
-          .set(data, SetOptions(merge: true))
+          .set(docData, SetOptions(merge: true))
           .catchError((e) {
         debugPrint('Firestore write $collection/$id error: $e');
       });
@@ -59,7 +84,18 @@ class FirebaseSyncService {
   static Future<void> _deleteDoc(String collection, String id) async {
     if (!_isInitialized || firestore == null || id.isEmpty) return;
     try {
-      // Non-blocking fire-and-forget cloud delete so UI never hangs
+      // 1. Delete from user-scoped collection
+      firestore!
+          .collection('users')
+          .doc(_activeUserId)
+          .collection(collection)
+          .doc(id)
+          .delete()
+          .catchError((e) {
+        debugPrint('Firestore delete users/$_activeUserId/$collection/$id error: $e');
+      });
+
+      // 2. Delete from global collection
       firestore!
           .collection(collection)
           .doc(id)
@@ -118,19 +154,80 @@ class FirebaseSyncService {
 
   // --- Cloud Fetch (used to restore data on login / app start) ---
 
-  /// Fetches all documents from a Firestore collection.
+  /// Fetches all documents from a Firestore collection for the active user.
+  /// Falls back to top-level collection for backwards compatibility.
   /// Returns empty list if Firebase is not initialized or any error occurs.
-  static Future<List<Map<String, dynamic>>> fetchAll(String collection) async {
+  static Future<List<Map<String, dynamic>>> fetchAll(String collection, {String? userId}) async {
     if (!_isInitialized || firestore == null) return [];
+    final targetUser = userId ?? _activeUserId;
     try {
-      final snap = await firestore!
+      // 1. Try user-scoped collection: users/{targetUser}/{collection}
+      final userSnap = await firestore!
+          .collection('users')
+          .doc(targetUser)
           .collection(collection)
-          .get(const GetOptions(source: Source.serverAndCache));
-      return snap.docs.map((d) => d.data()).toList();
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 8));
+
+      if (userSnap.docs.isNotEmpty) {
+        return userSnap.docs.map((d) => d.data()).toList();
+      }
+
+      // 2. Fallback to top-level collection: {collection}
+      final topSnap = await firestore!
+          .collection(collection)
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 8));
+
+      return topSnap.docs.map((d) => d.data()).toList();
     } catch (e) {
       debugPrint('Firestore fetchAll $collection error: $e');
       return [];
     }
+  }
+
+  /// Bulk pushes all local in-memory data to Firestore
+  static Future<int> pushAllLocalData({
+    required List<Map<String, dynamic>> properties,
+    required List<Map<String, dynamic>> tenants,
+    required List<Map<String, dynamic>> rentEntries,
+    required List<Map<String, dynamic>> expenses,
+  }) async {
+    if (!_isInitialized || firestore == null) return 0;
+    int syncedCount = 0;
+    try {
+      for (final p in properties) {
+        final id = p['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          await _writeDoc('properties', id, p);
+          syncedCount++;
+        }
+      }
+      for (final t in tenants) {
+        final id = t['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          await _writeDoc('tenants', id, t);
+          syncedCount++;
+        }
+      }
+      for (final r in rentEntries) {
+        final id = r['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          await _writeDoc('rent_entries', id, r);
+          syncedCount++;
+        }
+      }
+      for (final e in expenses) {
+        final id = e['id'] as String?;
+        if (id != null && id.isNotEmpty) {
+          await _writeDoc('expenses', id, e);
+          syncedCount++;
+        }
+      }
+    } catch (e) {
+      debugPrint('pushAllLocalData error: $e');
+    }
+    return syncedCount;
   }
 }
 

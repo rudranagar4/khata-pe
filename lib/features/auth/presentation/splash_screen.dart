@@ -37,6 +37,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final settings = ref.read(userSettingsProvider);
 
     if (authRepo.currentUser != null) {
+      FirebaseSyncService.setActiveUser(authRepo.currentUser!.id);
       // User was previously logged in — restore cloud data in background
       // so reinstalling the app doesn't lose Firestore data
       _restoreFromCloud(); // fire-and-forget, don't await (non-blocking)

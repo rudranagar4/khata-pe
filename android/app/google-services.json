@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:657069485194:android:d9571f5b08c908f56e9c40",
+        "mobilesdk_app_id": "1:657069485194:android:e7d90440d43cb7aa679173",
         "android_client_info": {
           "package_name": "com.khatape.khatape"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSy_KhataPe_657069485194_AndroidKey"
+          "current_key": "AIzaSyBe9ohz9tjeqnWtltBsYTzmICQ0yF3bhI4"
         }
       ],
       "services": {
@@ -27,4 +27,3 @@
   ],
   "configuration_version": "1"
 }
-

@@ -101,6 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final user = await ref.read(authRepositoryProvider).loginWithUsername(username, password);
+      FirebaseSyncService.setActiveUser(user.id);
       ref.read(currentUserProvider.notifier).state = user;
       await _restoreFromCloud();
       if (mounted) {
@@ -121,6 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       final user = await ref.read(authRepositoryProvider).loginDemo();
+      FirebaseSyncService.setActiveUser(user.id);
       ref.read(currentUserProvider.notifier).state = user;
       await _restoreFromCloud();
       if (mounted) {

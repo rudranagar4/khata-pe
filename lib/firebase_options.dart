@@ -21,7 +21,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSy_KhataPe_657069485194_WebKey',
+    apiKey: 'AIzaSyBe9ohz9tjeqnWtltBsYTzmICQ0yF3bhI4',
     appId: '1:657069485194:web:7f61ad88e0b1f200',
     messagingSenderId: '657069485194',
     projectId: 'khata-pe',
@@ -30,8 +30,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSy_KhataPe_657069485194_AndroidKey',
-    appId: '1:657069485194:android:d9571f5b08c908f56e9c40',
+    apiKey: 'AIzaSyBe9ohz9tjeqnWtltBsYTzmICQ0yF3bhI4',
+    appId: '1:657069485194:android:e7d90440d43cb7aa679173',
     messagingSenderId: '657069485194',
     projectId: 'khata-pe',
     storageBucket: 'khata-pe.firebasestorage.app',

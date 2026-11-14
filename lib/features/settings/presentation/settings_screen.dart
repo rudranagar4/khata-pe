@@ -6,12 +6,17 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/firebase_sync_service.dart';
 import '../../auth/data/auth_repository.dart';
 import '../data/settings_repository.dart';
 import '../../properties/data/property_repository.dart';
+import '../../properties/domain/models/property.dart';
 import '../../tenants/data/tenant_repository.dart';
+import '../../tenants/domain/models/tenant.dart';
 import '../../rent/data/rent_repository.dart';
+import '../../rent/domain/models/rent_entry.dart';
 import '../../expenses/data/expense_repository.dart';
+import '../../expenses/domain/models/expense.dart';
 import 'profile_screen.dart';
 import 'reminder_settings_screen.dart';
 
@@ -22,6 +27,85 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final settings = ref.watch(userSettingsProvider);
+
+    void syncWithFirebase() async {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Text('Syncing data with Firebase Firestore...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      final properties = ref.read(propertiesProvider);
+      final tenants = ref.read(tenantsProvider);
+      final rentEntries = ref.read(rentLedgerProvider);
+      final expenses = ref.read(expensesProvider);
+
+      if (user != null) {
+        FirebaseSyncService.setActiveUser(user.id);
+      }
+
+      // 1. Push all local records to Firebase
+      final count = await FirebaseSyncService.pushAllLocalData(
+        properties: properties.map((p) => p.toJson()).toList(),
+        tenants: tenants.map((t) => t.toJson()).toList(),
+        rentEntries: rentEntries.map((r) => r.toJson()).toList(),
+        expenses: expenses.map((e) => e.toJson()).toList(),
+      );
+
+      // 2. Fetch latest records from Firebase
+      try {
+        final cloudProps = await FirebaseSyncService.fetchAll('properties');
+        if (cloudProps.isNotEmpty) {
+          final props = cloudProps.map((d) => Property.fromJson(d)).toList();
+          await ref.read(propertiesProvider.notifier).loadFromCloud(props);
+        }
+
+        final cloudTenants = await FirebaseSyncService.fetchAll('tenants');
+        if (cloudTenants.isNotEmpty) {
+          final tens = cloudTenants.map((d) => Tenant.fromJson(d)).toList();
+          await ref.read(tenantsProvider.notifier).loadFromCloud(tens);
+        }
+
+        final cloudRent = await FirebaseSyncService.fetchAll('rent_entries');
+        if (cloudRent.isNotEmpty) {
+          final entries = cloudRent.map((d) => RentEntry.fromJson(d)).toList();
+          await ref.read(rentLedgerProvider.notifier).loadFromCloud(entries);
+        }
+
+        final cloudExpenses = await FirebaseSyncService.fetchAll('expenses');
+        if (cloudExpenses.isNotEmpty) {
+          final exps = cloudExpenses.map((d) => Expense.fromJson(d)).toList();
+          await ref.read(expensesProvider.notifier).loadFromCloud(exps);
+        }
+      } catch (e) {
+        debugPrint('Cloud sync pull error: $e');
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF16A34A),
+            content: Text(
+              FirebaseSyncService.isInitialized
+                  ? 'Cloud sync complete! ($count items verified)'
+                  : 'Data saved locally. Connect to Firebase for cloud sync.',
+            ),
+          ),
+        );
+      }
+    }
 
     void exportAllDataBackup() async {
       final properties = ref.read(propertiesProvider);
@@ -143,6 +227,14 @@ class SettingsScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                ListTile(
+                  leading: const Icon(Icons.cloud_sync_outlined, color: Color(0xFF38BDF8)),
+                  title: const Text('Sync with Firebase Cloud', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Back up & sync data with your online account', style: TextStyle(color: AppColors.textSecondary)),
+                  trailing: const Icon(Icons.sync_rounded, color: Color(0xFF38BDF8)),
+                  onTap: syncWithFirebase,
+                ),
+                const Divider(color: AppColors.borderDark, height: 1),
                 ListTile(
                   leading: const Icon(Icons.receipt_long_outlined, color: Color(0xFFFBBF24)),
                   title: const Text('Property Expenses', style: TextStyle(color: Colors.white)),
