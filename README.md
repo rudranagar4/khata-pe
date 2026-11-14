@@ -13,7 +13,7 @@
 
 <br/>
 
-<a href="release/khata-pe.apk">
+<a href="https://github.com/rudranagar4/khata-pe/raw/main/release/khata-pe.apk">
   <img src="https://img.shields.io/badge/Direct_Download-Khata_Pe_APK_(Android)-16A34A?style=for-the-badge&logo=android&logoColor=white&scale=1.2" alt="Download APK" />
 </a>
 
@@ -69,13 +69,18 @@ Managing rents across scattered flats, shops, and rooms through paper registers 
 
 ## 📱 Download & Install APK
 
-You can download and install the ready-to-run Android APK directly from this repository:
+You can download and install the ready-to-run Android APK directly on your phone:
 
-| Build | File Link | Status |
-| :--- | :--- | :--- |
-| **Release APK (v1.0.0)** | [📥 **Download `khata-pe.apk`**](release/khata-pe.apk) | ✅ Stable Release |
+| Build | Direct Download Link | Alternative Mirror | Size |
+| :--- | :--- | :--- | :--- |
+| **Release APK (v1.0.0)** | [📥 **Direct Download APK**](https://github.com/rudranagar4/khata-pe/raw/main/release/khata-pe.apk) | [🌐 **Raw Mirror Link**](https://raw.githubusercontent.com/rudranagar4/khata-pe/main/release/khata-pe.apk) | ~58.4 MB |
 
-> **Installation Note**: When installing the APK on your Android device for the first time, allow *"Install from unknown sources"* in your browser or file manager settings.
+> [!TIP]
+> **How to install on your Android phone:**
+> 1. Click the green **Direct Download** button or link above.
+> 2. When your browser warns *"File might be harmful"*, click **Download anyway** (standard for APKs downloaded outside Google Play Store).
+> 3. Once downloaded, tap the file in your notification bar or Downloads folder to install.
+> 4. If prompted, toggle on *"Allow from this source"* in Settings.
 
 ---
 
