@@ -220,6 +220,11 @@ class PropertiesNotifier extends StateNotifier<List<Property>> {
     await _repo.saveProperties([]);
   }
 
+  Future<void> loadFromCloud(List<Property> properties) async {
+    state = properties;
+    await _repo.saveProperties(properties);
+  }
+
   Future<void> deleteUnit(String propertyId, String unitId) async {
     // 1. Remove rent entries for this unit
     await _ref.read(rentLedgerProvider.notifier).removeEntriesForUnit(propertyId, unitId);

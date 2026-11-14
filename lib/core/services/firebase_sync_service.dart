@@ -115,5 +115,22 @@ class FirebaseSyncService {
   static Future<void> deleteExpense(String expenseId) async {
     await _deleteDoc('expenses', expenseId);
   }
+
+  // --- Cloud Fetch (used to restore data on login / app start) ---
+
+  /// Fetches all documents from a Firestore collection.
+  /// Returns empty list if Firebase is not initialized or any error occurs.
+  static Future<List<Map<String, dynamic>>> fetchAll(String collection) async {
+    if (!_isInitialized || firestore == null) return [];
+    try {
+      final snap = await firestore!
+          .collection(collection)
+          .get(const GetOptions(source: Source.serverAndCache));
+      return snap.docs.map((d) => d.data()).toList();
+    } catch (e) {
+      debugPrint('Firestore fetchAll $collection error: $e');
+      return [];
+    }
+  }
 }
 

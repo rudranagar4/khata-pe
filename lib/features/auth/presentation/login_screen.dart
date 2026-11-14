@@ -3,7 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/khata_pe_brand.dart';
+import '../../../core/services/firebase_sync_service.dart';
 import '../data/auth_repository.dart';
+import '../../properties/data/property_repository.dart';
+import '../../properties/domain/models/property.dart';
+import '../../tenants/data/tenant_repository.dart';
+import '../../tenants/domain/models/tenant.dart';
+import '../../rent/data/rent_repository.dart';
+import '../../rent/domain/models/rent_entry.dart';
+import '../../expenses/data/expense_repository.dart';
+import '../../expenses/domain/models/expense.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,12 +27,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String _loadingMessage = 'Signing in...';
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// Restores all data from Firestore after a successful login.
+  /// Silently falls back to local data if Firebase is unavailable.
+  Future<void> _restoreFromCloud() async {
+    if (!mounted) return;
+    setState(() => _loadingMessage = 'Syncing your data from cloud...');
+
+    try {
+      // Properties
+      final propertiesData = await FirebaseSyncService.fetchAll('properties');
+      if (propertiesData.isNotEmpty && mounted) {
+        final props = propertiesData
+            .map((d) => Property.fromJson(d))
+            .toList();
+        await ref.read(propertiesProvider.notifier).loadFromCloud(props);
+      }
+
+      // Tenants
+      final tenantsData = await FirebaseSyncService.fetchAll('tenants');
+      if (tenantsData.isNotEmpty && mounted) {
+        final tenants = tenantsData
+            .map((d) => Tenant.fromJson(d))
+            .toList();
+        await ref.read(tenantsProvider.notifier).loadFromCloud(tenants);
+      }
+
+      // Rent entries
+      final rentData = await FirebaseSyncService.fetchAll('rent_entries');
+      if (rentData.isNotEmpty && mounted) {
+        final entries = rentData
+            .map((d) => RentEntry.fromJson(d))
+            .toList();
+        await ref.read(rentLedgerProvider.notifier).loadFromCloud(entries);
+      }
+
+      // Expenses
+      final expenseData = await FirebaseSyncService.fetchAll('expenses');
+      if (expenseData.isNotEmpty && mounted) {
+        final expenses = expenseData
+            .map((d) => Expense.fromJson(d))
+            .toList();
+        await ref.read(expensesProvider.notifier).loadFromCloud(expenses);
+      }
+    } catch (e) {
+      // Silent failure — local data remains unchanged
+      debugPrint('Cloud restore error: $e');
+    }
   }
 
   void _handleLogin() async {
@@ -37,12 +95,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() {
       _isLoading = true;
+      _loadingMessage = 'Signing in...';
       _errorMessage = null;
     });
 
     try {
       final user = await ref.read(authRepositoryProvider).loginWithUsername(username, password);
       ref.read(currentUserProvider.notifier).state = user;
+      await _restoreFromCloud();
       if (mounted) {
         context.go('/home');
       }
@@ -56,11 +116,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleQuickDemoLogin() async {
     setState(() {
       _isLoading = true;
+      _loadingMessage = 'Signing in...';
       _errorMessage = null;
     });
     try {
       final user = await ref.read(authRepositoryProvider).loginDemo();
       ref.read(currentUserProvider.notifier).state = user;
+      await _restoreFromCloud();
       if (mounted) {
         context.go('/home');
       }
@@ -219,10 +281,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   onPressed: _isLoading ? null : _handleLogin,
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _loadingMessage,
+                              style: const TextStyle(fontSize: 14, color: Colors.white),
+                            ),
+                          ],
                         )
                       : const Text(
                           'Sign In (लॉग इन)',

@@ -260,6 +260,11 @@ class RentLedgerNotifier extends StateNotifier<List<RentEntry>> {
     }
   }
 
+  Future<void> loadFromCloud(List<RentEntry> entries) async {
+    state = entries;
+    await _repo.saveRentEntries(entries);
+  }
+
   Future<void> clearAllRentEntries() async {
     state = [];
     await _repo.saveRentEntries([]);

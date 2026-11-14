@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -69,7 +70,8 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Username'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
@@ -87,6 +89,15 @@ void main() {
 
   group('AppLockScreen Biometric Tests', () {
     testWidgets('AppLockScreen only shows Biometric unlock, NO PIN input or PIN button', (tester) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/local_auth'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'isDeviceSupported') return false;
+          if (methodCall.method == 'canCheckBiometrics') return false;
+          return null;
+        },
+      );
+
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
@@ -104,7 +115,8 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       expect(find.text('Khata Pe is Locked'), findsOneWidget);
       expect(find.textContaining('Unlock with Biometrics'), findsOneWidget);

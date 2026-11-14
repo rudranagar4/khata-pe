@@ -206,6 +206,11 @@ class TenantsNotifier extends StateNotifier<List<Tenant>> {
     await _repo.saveTenants(updated);
   }
 
+  Future<void> loadFromCloud(List<Tenant> tenants) async {
+    state = tenants;
+    await _repo.saveTenants(tenants);
+  }
+
   Future<void> clearAllTenants() async {
     state = [];
     await _repo.saveTenants([]);

@@ -93,6 +93,11 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
     await _repo.saveExpenses(updated);
   }
 
+  Future<void> loadFromCloud(List<Expense> expenses) async {
+    state = expenses;
+    await _repo.saveExpenses(expenses);
+  }
+
   Future<void> clearAllExpenses() async {
     state = [];
     await _repo.saveExpenses([]);
