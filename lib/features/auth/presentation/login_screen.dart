@@ -36,46 +36,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// Restores all data from Firestore after a successful login.
+  /// Restores all data from Firestore concurrently after a successful login.
   /// Silently falls back to local data if Firebase is unavailable.
   Future<void> _restoreFromCloud() async {
     if (!mounted) return;
     setState(() => _loadingMessage = 'Syncing your data from cloud...');
 
     try {
-      // Properties
-      final propertiesData = await FirebaseSyncService.fetchAll('properties');
-      if (propertiesData.isNotEmpty && mounted) {
-        final props = propertiesData
-            .map((d) => Property.fromJson(d))
-            .toList();
+      final results = await Future.wait([
+        FirebaseSyncService.fetchAll('properties'),
+        FirebaseSyncService.fetchAll('tenants'),
+        FirebaseSyncService.fetchAll('rent_entries'),
+        FirebaseSyncService.fetchAll('expenses'),
+      ]);
+
+      if (!mounted) return;
+
+      final propertiesData = results[0];
+      final tenantsData = results[1];
+      final rentData = results[2];
+      final expenseData = results[3];
+
+      if (propertiesData.isNotEmpty) {
+        final props = propertiesData.map((d) => Property.fromJson(d)).toList();
         await ref.read(propertiesProvider.notifier).loadFromCloud(props);
       }
 
-      // Tenants
-      final tenantsData = await FirebaseSyncService.fetchAll('tenants');
-      if (tenantsData.isNotEmpty && mounted) {
-        final tenants = tenantsData
-            .map((d) => Tenant.fromJson(d))
-            .toList();
+      if (tenantsData.isNotEmpty) {
+        final tenants = tenantsData.map((d) => Tenant.fromJson(d)).toList();
         await ref.read(tenantsProvider.notifier).loadFromCloud(tenants);
       }
 
-      // Rent entries
-      final rentData = await FirebaseSyncService.fetchAll('rent_entries');
-      if (rentData.isNotEmpty && mounted) {
-        final entries = rentData
-            .map((d) => RentEntry.fromJson(d))
-            .toList();
+      if (rentData.isNotEmpty) {
+        final entries = rentData.map((d) => RentEntry.fromJson(d)).toList();
         await ref.read(rentLedgerProvider.notifier).loadFromCloud(entries);
       }
 
-      // Expenses
-      final expenseData = await FirebaseSyncService.fetchAll('expenses');
-      if (expenseData.isNotEmpty && mounted) {
-        final expenses = expenseData
-            .map((d) => Expense.fromJson(d))
-            .toList();
+      if (expenseData.isNotEmpty) {
+        final expenses = expenseData.map((d) => Expense.fromJson(d)).toList();
         await ref.read(expensesProvider.notifier).loadFromCloud(expenses);
       }
     } catch (e) {

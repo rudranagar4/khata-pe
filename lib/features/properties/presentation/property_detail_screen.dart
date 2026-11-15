@@ -9,6 +9,7 @@ import '../data/property_repository.dart';
 import '../domain/models/property.dart';
 import '../domain/models/unit.dart';
 import '../../tenants/data/tenant_repository.dart';
+import '../../tenants/domain/models/tenant.dart';
 import '../../tenants/presentation/add_edit_tenant_screen.dart';
 import '../../rent/data/rent_repository.dart';
 import '../../rent/domain/models/rent_entry.dart';
@@ -102,6 +103,19 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     final totalCollected = propEntries.fold(0, (sum, e) => sum + e.totalCollected);
     final totalExpected = propEntries.fold(0, (sum, e) => sum + e.totalPayable);
     final totalPending = (totalExpected - totalCollected).clamp(0, 99999999);
+
+    // Fast O(1) maps for instant room card binding without repeated loops
+    final occupantByUnitId = <String, Tenant>{};
+    for (final t in tenants) {
+      if (t.propertyId == property.id && t.isActive) {
+        occupantByUnitId[t.unitId] = t;
+      }
+    }
+
+    final rentEntryByUnitId = <String, RentEntry>{};
+    for (final e in propEntries) {
+      rentEntryByUnitId[e.unitId] = e;
+    }
 
     final filteredUnits = property.units.where((u) {
       if (_statusFilter == null) return true;
@@ -409,12 +423,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     Builder(
                       builder: (ctx) {
                         final room = filteredUnits[i];
-                        final occupant = tenants
-                            .where((t) => t.propertyId == property.id && t.unitId == room.id && t.isActive)
-                            .firstOrNull;
-                        final rentEntry = occupant != null
-                            ? propEntries.where((e) => e.unitId == room.id && e.tenantId == occupant.id).firstOrNull
-                            : null;
+                        final occupant = occupantByUnitId[room.id];
+                        final rentEntry = rentEntryByUnitId[room.id];
                         return _buildRoomCard(
                           context: ctx,
                           property: property,

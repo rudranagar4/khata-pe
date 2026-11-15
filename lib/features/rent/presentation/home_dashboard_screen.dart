@@ -132,8 +132,12 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final properties = ref.watch(propertiesProvider);
     final tenants = ref.watch(tenantsProvider);
 
+    // Fast O(1) lookup maps to eliminate repetitive linear searches during rendering
+    final tenantMap = {for (final t in tenants) t.id: t};
+    final propertyMap = {for (final p in properties) p.id: p};
+
     // Filter out any orphaned entries for tenants that no longer exist
-    final activeTenantIds = tenants.map((t) => t.id).toSet();
+    final activeTenantIds = tenantMap.keys.toSet();
     final entries = rawEntries.where((e) => activeTenantIds.contains(e.tenantId)).toList();
 
     // Filter by selected building if specified
@@ -645,9 +649,9 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final entry = filteredEntries[index];
-                    final tenant = tenants.where((t) => t.id == entry.tenantId).firstOrNull;
+                    final tenant = tenantMap[entry.tenantId];
                     if (tenant == null) return const SizedBox.shrink();
-                    final prop = properties.where((p) => p.id == entry.propertyId).firstOrNull;
+                    final prop = propertyMap[entry.propertyId];
                     final unit = prop?.units.where((u) => u.id == entry.unitId).firstOrNull;
 
                     // Choose avatar colors based on name index

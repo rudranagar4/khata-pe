@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../data/property_repository.dart';
 import '../../rent/data/rent_repository.dart';
+import '../../rent/domain/models/rent_entry.dart';
 
 class PropertiesListScreen extends ConsumerWidget {
   const PropertiesListScreen({super.key});
@@ -18,6 +19,12 @@ class PropertiesListScreen extends ConsumerWidget {
     final totalRooms = properties.fold(0, (sum, p) => sum + p.totalRooms);
     final occupiedRooms = properties.fold(0, (sum, p) => sum + p.occupiedRooms);
     final vacantRooms = properties.fold(0, (sum, p) => sum + p.vacantRooms);
+
+    // Group rent entries by propertyId in a single pass
+    final propEntriesByPropId = <String, List<RentEntry>>{};
+    for (final e in rentEntries) {
+      propEntriesByPropId.putIfAbsent(e.propertyId, () => []).add(e);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldDark,
@@ -88,9 +95,9 @@ class PropertiesListScreen extends ConsumerWidget {
 
                 // Buildings List
                 ...properties.map((prop) {
-                  final propEntries = rentEntries.where((e) => e.propertyId == prop.id).toList();
-                  final propExpected = propEntries.fold(0, (sum, e) => sum + e.totalPayable);
-                  final propReceived = propEntries.fold(0, (sum, e) => sum + e.totalCollected);
+                  final propEntries = propEntriesByPropId[prop.id] ?? <RentEntry>[];
+                  final propExpected = propEntries.fold<int>(0, (sum, e) => sum + e.totalPayable.toInt());
+                  final propReceived = propEntries.fold<int>(0, (sum, e) => sum + e.totalCollected.toInt());
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 14.0),

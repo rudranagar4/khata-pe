@@ -32,6 +32,10 @@ class _TenantsListScreenState extends ConsumerState<TenantsListScreen> {
     final properties = ref.watch(propertiesProvider);
     final rentEntries = ref.watch(currentMonthEntriesProvider);
 
+    // Fast O(1) maps for instant tenant card lookups
+    final propMap = {for (final p in properties) p.id: p};
+    final rentEntryByTenantId = {for (final e in rentEntries) e.tenantId: e};
+
     final filtered = allTenants.where((t) {
       if (_showActiveOnly && !t.isActive) return false;
       if (!_showActiveOnly && t.isActive) return false;
@@ -138,10 +142,10 @@ class _TenantsListScreenState extends ConsumerState<TenantsListScreen> {
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final tenant = filtered[index];
-                      final prop = properties.where((p) => p.id == tenant.propertyId).firstOrNull;
+                      final prop = propMap[tenant.propertyId];
                       final unit = prop?.units.where((u) => u.id == tenant.unitId).firstOrNull;
 
-                      final currentEntry = rentEntries.where((e) => e.tenantId == tenant.id).firstOrNull;
+                      final currentEntry = rentEntryByTenantId[tenant.id];
                       final balanceDue = currentEntry?.balanceDue ?? 0;
                       final isExpiringSoon = tenant.isAgreementExpiringWithin(30);
 

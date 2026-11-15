@@ -155,38 +155,49 @@ class FirebaseSyncService {
   // --- Cloud Fetch (used to restore data on login / app start) ---
 
   /// Fetches all documents from a Firestore collection for the active user.
-  /// Falls back to top-level collection for backwards compatibility.
+  /// Uses fast parallel querying with quick timeout and local cache fallback.
   /// Returns empty list if Firebase is not initialized or any error occurs.
   static Future<List<Map<String, dynamic>>> fetchAll(String collection, {String? userId}) async {
     if (!_isInitialized || firestore == null) return [];
     final targetUser = userId ?? _activeUserId;
     try {
-      // 1. Try user-scoped collection: users/{targetUser}/{collection}
+      // 1. Try user-scoped collection with 3.5s timeout for fast response
       final userSnap = await firestore!
           .collection('users')
           .doc(targetUser)
           .collection(collection)
-          .get(const GetOptions(source: Source.serverAndCache))
-          .timeout(const Duration(seconds: 8));
+          .get()
+          .timeout(const Duration(milliseconds: 3500));
 
       if (userSnap.docs.isNotEmpty) {
         return userSnap.docs.map((d) => d.data()).toList();
       }
 
-      // 2. Fallback to top-level collection: {collection}
+      // 2. Fallback to top-level collection with 3.5s timeout
       final topSnap = await firestore!
           .collection(collection)
-          .get(const GetOptions(source: Source.serverAndCache))
-          .timeout(const Duration(seconds: 8));
+          .get()
+          .timeout(const Duration(milliseconds: 3500));
 
       return topSnap.docs.map((d) => d.data()).toList();
     } catch (e) {
+      // If network is slow or offline, immediately try offline Firestore cache
+      try {
+        final cacheSnap = await firestore!
+            .collection('users')
+            .doc(targetUser)
+            .collection(collection)
+            .get(const GetOptions(source: Source.cache));
+        if (cacheSnap.docs.isNotEmpty) {
+          return cacheSnap.docs.map((d) => d.data()).toList();
+        }
+      } catch (_) {}
       debugPrint('Firestore fetchAll $collection error: $e');
       return [];
     }
   }
 
-  /// Bulk pushes all local in-memory data to Firestore
+  /// Bulk pushes all local in-memory data to Firestore concurrently in parallel
   static Future<int> pushAllLocalData({
     required List<Map<String, dynamic>> properties,
     required List<Map<String, dynamic>> tenants,
@@ -196,34 +207,38 @@ class FirebaseSyncService {
     if (!_isInitialized || firestore == null) return 0;
     int syncedCount = 0;
     try {
+      final futures = <Future<void>>[];
+
       for (final p in properties) {
         final id = p['id'] as String?;
         if (id != null && id.isNotEmpty) {
-          await _writeDoc('properties', id, p);
+          futures.add(_writeDoc('properties', id, p));
           syncedCount++;
         }
       }
       for (final t in tenants) {
         final id = t['id'] as String?;
         if (id != null && id.isNotEmpty) {
-          await _writeDoc('tenants', id, t);
+          futures.add(_writeDoc('tenants', id, t));
           syncedCount++;
         }
       }
       for (final r in rentEntries) {
         final id = r['id'] as String?;
         if (id != null && id.isNotEmpty) {
-          await _writeDoc('rent_entries', id, r);
+          futures.add(_writeDoc('rent_entries', id, r));
           syncedCount++;
         }
       }
       for (final e in expenses) {
         final id = e['id'] as String?;
         if (id != null && id.isNotEmpty) {
-          await _writeDoc('expenses', id, e);
+          futures.add(_writeDoc('expenses', id, e));
           syncedCount++;
         }
       }
+
+      await Future.wait(futures);
     } catch (e) {
       debugPrint('pushAllLocalData error: $e');
     }
